@@ -60,7 +60,7 @@ test('編碼 API 前綴仍使用固定 handler，動態參數保留資料身份'
   for (const prefix of ['/api', '/%61pi', '/a%70i']) {
     const response = await getSettings(new NextRequest(`http://127.0.0.1:3142${prefix}/settings`));
     assert.equal(response.headers.get('X-MRP-Data'), 'synthetic');
-    assert.equal((await response.json()).connection.dbVersion, 'Interview demo・不連資料庫');
+    assert.equal((await response.json()).connection.dbVersion, 'Demo・不連資料庫');
   }
   const partVersion = String(dataset(3).fg[0].partVersion);
   const response = await getPeriods(new NextRequest('http://127.0.0.1:3142/%61pi/fg-monthly/ignored/periods?runId=3'), { params: Promise.resolve({ partVersion }) });

@@ -1,6 +1,6 @@
-# MRP Interview Demo
+# MRP Demo
 
-沿用既有 MRP 程式、頁面與進階表格操作的面試展示版；所有 runtime 資料改用合成資料。
+沿用既有 MRP 程式、頁面與進階表格操作的 Demo 展示版；所有 runtime 資料改用合成資料。
 此專案不是重新開發的介面，也不是公司資料庫的複本。
 
 ## 隔離邊界
@@ -17,7 +17,7 @@
 ## Windows 展示
 
 目標為 Windows 10/11 + Node.js 24 LTS；不要求 PostgreSQL、Docker 或公司 API。
-從此儲存庫下載 ZIP 或 clone。請在面試前、使用 Windows 電腦且能連網時準備一次：
+從此儲存庫下載 ZIP 或 clone。請在展示前、使用 Windows 電腦且能連網時準備一次：
 
 ```powershell
 npm ci
@@ -55,7 +55,7 @@ production 啟動的合成状态位於 `.next/standalone/demo-data/state.json`�
 `npm run lint` 與 `npm run build` 可獨立執行。
 2026-09-17 相容範圍依賴修補後，`npm audit` 仍有 10 項（7 high、2 moderate、1 low，沒有 critical）。
 保留框架 major version，未使用 `npm audit fix --force`。Prisma config/工具鏈、停用的 SMTP 與 XLSX 等有未清除警告。
-本版只供本機面試展示，不應直接公開部署成 production 服務。
+本版只供本機 Demo 展示，不應直接公開部署成 production 服務。
 XLSX 用於匯出，不提供讀入任意 Excel 檔案的入口；[SheetJS advisory](https://github.com/advisories/GHSA-4r6h-8v6p-xvw6) 說明匯出情境不受該 prototype-pollution 讀檔漏洞影響，這不等於整個 dependency 無風險。
 
 ## 開發
