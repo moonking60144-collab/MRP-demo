@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.fg-monthly-toolbar {
+  container-type: inline-size;
+}
+
+@container (min-width: 1200px) {
+  .fg-monthly-toolbar-extras {
+    margin-left: auto;
+  }
+}
+
+@container (min-width: 1800px) {
+  .fg-monthly-toolbar-secondary {
+    display: flex;
+  }
+
+  .fg-monthly-toolbar-more {
+    display: none;
+  }
+}
+
+:root {
+  --foreground: #171717;
+  --background: #ffffff;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* .font-mono：放棄真正 mono 字體（JetBrains/Source Code Pro/Ubuntu Mono 預設 0 都
+   帶斜線或點，業務看不爽），改用 body 同款 system sans + tabular-nums。
+   - 0 純圓（sans 預設）
+   - 數字等寬（tabular-nums）→ 表格內欄位仍對齊
+   - 料號的字母會 proportional（SM/V/PA 比較窄），跟「客戶料號」「鍛造母件」欄一致 */
+.font-mono {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbar — 10px balances "easy to grab" with "doesn't dominate".
+   6px (original) was too thin to hit reliably; 12px felt too heavy. */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* MRP table styles
+ * NOTE: child-combinators only — these rules MUST NOT cascade into nested tables
+ * (e.g. the period-detail grid rendered inside an expanded `<td colspan>` row),
+ * otherwise nested <th> get `sticky top-0` and stack on top of the outer header.
+ */
+.mrp-table > thead > tr > th { @apply sticky top-0 z-30 bg-slate-100 text-left text-xs font-semibold text-slate-600 px-3 py-2 border-b border-slate-200; }
+/* Floor every column width so a long header (e.g. 不良品庫存pc) can't get
+ * squeezed by a narrow body cell (e.g. a 1-digit number) and wrap into 6
+ * lines of 1 char each. ~50px fits at least 2 Chinese chars per line plus
+ * cell padding — long headers wrap to 2-3 lines max instead of stacking
+ * vertically. Override per-column via inline `style={{ width: N }}` when a
+ * specific column needs to be wider or narrower. */
+.mrp-table > thead > tr > th { min-width: 50px; }
+.mrp-table > tbody > tr > td { @apply text-sm px-3 py-1.5 border-b border-slate-100; }
+/* Only apply hover bg to main listing rows, not the expanded detail row */
+.mrp-table > tbody > tr:not([data-detail]) > td:not([colspan]):hover { @apply bg-blue-50/50; }
+.mrp-table > tbody > tr.cursor-pointer:hover > td { @apply bg-blue-50/50; }
+
+/* 傳統 view 表格：列 hover 用 translucent 疊加。傳統表的每個 cell 都自己畫
+   背景（斑馬帶 / 期推移群組色 / status 色），<tr> 層級的 hover 背景會被
+   cell 自己的底色蓋掉，所以改用 inset box-shadow 把一層中性 wash 疊在
+   cell 底色「之上」—— 不挑色、不被覆蓋、整列一致。 */
+.mrp-trad-table > tbody > tr:hover > td { box-shadow: inset 0 0 0 9999px rgba(15, 23, 42, 0.08); }
+
+/* sticky thead 邊框：border-collapse 模式下 <tr> 層級的 border-b 視覺上被
+   視為「下一列的 border-top」，sticky 時不會跟著 thead 移動 → scroll 時
+   thead 跟 tbody 第一條之間會閃出 1-2px 縫隙。改用 cell-level inset
+   box-shadow（屬於 cell、跟著 sticky cell 一起 stuck）就不會露縫。
+   配色對應原 <tr> 上的 border-* utility：row 1 = slate-300 / row 2 = slate-400。 */
+.mrp-trad-table > thead > tr:first-child > th { box-shadow: inset 0 -1px 0 rgb(203 213 225); }
+.mrp-trad-table > thead > tr:last-child > th { box-shadow: inset 0 -2px 0 rgb(148 163 184); }
+
+/* 元件週推移 / 產銷會議的傳統 view：原本 border-collapse + <tr> 級 border，
+   sticky thead / 凍結欄捲動時會露縫（border-collapse 下 <tr> border 不跟 sticky cell 移動），
+   且非整數 zoom 字級會放大成 sub-pixel seam。改 border-separate 後 <tr> border 失效，
+   故把列分隔線改 cell-level（td border-bottom）、thead 下框改 cell box-shadow ——
+   都屬於 cell、跟著 sticky 一起 stuck，捲動不露縫。配色對齊原本的 slate-100/300/400。 */
+.trad-sep-table > tbody > tr > td { border-bottom: 1px solid rgb(241 245 249); }
+.trad-sep-table > thead > tr:first-child > th { box-shadow: inset 0 -1px 0 rgb(203 213 225); }
+.trad-sep-table > thead > tr:last-child > th { box-shadow: inset 0 -2px 0 rgb(148 163 184); }
+
+/* 產銷會議的同 ERP 群組分隔線不使用 border，避免群組首列比一般列多 2px、
+   破壞 single-height virtualizer。background-image 不參與 table row geometry，
+   且可與既有 hover inset wash 同時存在。 */
+.sales-meeting-trad-table > tbody > tr[data-shared-group-start="true"] > td {
+  background-image: linear-gradient(to bottom, rgb(56 189 248) 0 2px, transparent 2px);
+  background-repeat: no-repeat;
+}
+
+/* ==========================================================================
+   Ragic 風樣式：套用在傳統 view 上，比照 Ragic [22] MRP-成品 (月推移) 的
+   條件式格式。純前端 UI，不影響任何業務數值。
+   只在 <table data-table-style="ragic"> 時生效，classic 模式無作用。
+   ========================================================================== */
+
+/* 斑馬紋 — 灰 / 淡藍交替，對齊 Ragic 顯示效果（兩邊都有色才明顯）。 */
+.mrp-trad-table[data-table-style="ragic"] > tbody:where(:not([data-stripe-start="1"])) > tr:nth-child(odd) > td,
+.mrp-trad-table[data-table-style="ragic"] > tbody:where([data-stripe-start="1"]) > tr:nth-child(even) > td {
+  background-color: rgb(241 245 249); /* slate-100 — 淡灰 */
+}
+.mrp-trad-table[data-table-style="ragic"] > tbody:where(:not([data-stripe-start="1"])) > tr:nth-child(even) > td,
+.mrp-trad-table[data-table-style="ragic"] > tbody:where([data-stripe-start="1"]) > tr:nth-child(odd) > td {
+  background-color: rgb(224 242 254); /* sky-100 — 淡藍 */
+}
+
+/* 不良品庫存 > 0 → 紅 cell（Ragic「不良品庫存 pc 大於 0 → 紅」對應） */
+.mrp-trad-table[data-table-style="ragic"] td[data-col="badStockPc"][data-pos="1"] {
+  background-color: rgb(254 226 226); /* red-100 */
+  color: rgb(153 27 27); /* red-800 */
+  font-weight: bold;
+}
+
+/* 開始缺貨期數 3 階分級染色（對齊 Ragic 後台條件式格式的實際色碼）：
+     critical = 第 1-2 期、high = 第 3-4 期、warning = 第 5-6 期 */
+
+/* === row 級（整列前段欄位）=== Ragic 各條件對應的較淺背景 */
+.mrp-trad-table[data-table-style="ragic"] > tbody > tr[data-row-shortage="critical"] > td {
+  background-color: #fde0ea; /* 淡粉 */
+}
+.mrp-trad-table[data-table-style="ragic"] > tbody > tr[data-row-shortage="high"] > td {
+  background-color: #f9e3a1; /* 淡橘 */
+}
+.mrp-trad-table[data-table-style="ragic"] > tbody > tr[data-row-shortage="warning"] > td {
+  background-color: #ffffe3; /* 淡黃 */
+}
+
+/* === cell 級（開始缺貨期數 cell 本身）=== Ragic 用較深的同色系強調 */
+.mrp-trad-table[data-table-style="ragic"] td[data-shortage-level="critical"] {
+  background-color: #e05281; /* 深粉 */
+  color: #FFFF00; /* 黃文字 */
+  font-weight: bold;
+}
+.mrp-trad-table[data-table-style="ragic"] td[data-shortage-level="high"] {
+  background-color: #FFCC66; /* 橘黃 */
+}
+.mrp-trad-table[data-table-style="ragic"] td[data-shortage-level="warning"] {
+  background-color: #FFFF99; /* 黃 */
+}
+
+/* cell 級剩餘庫存（含無計劃量）各期 < 0 → 紅。Ragic 條件清單 ST1-10~21 / S01~S09
+   各列獨立條件，我們化簡為單一 data-period-neg attr。
+   selector specificity 跟 row 級相同，但寫在「之後」，覆蓋 row 級警示色 —
+   單 cell 的「負庫存」資訊不該被「整列警示同色」吃掉。 */
+.mrp-trad-table[data-table-style="ragic"] > tbody > tr > td[data-period-neg="1"] {
+  background-color: rgb(254 226 226); /* red-100 */
+  color: rgb(153 27 27); /* red-800 */
+  font-weight: 700;
+}
+
+/* Status badges */
+.badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
+.badge-success { @apply bg-green-100 text-green-800; }
+.badge-warning { @apply bg-yellow-100 text-yellow-800; }
+.badge-danger { @apply bg-red-100 text-red-800; }
+.badge-info { @apply bg-blue-100 text-blue-800; }
+.badge-neutral { @apply bg-slate-100 text-slate-600; }
+
+/* Shortage highlight */
+.shortage-cell { @apply bg-red-50 text-red-700 font-semibold; }

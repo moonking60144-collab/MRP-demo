@@ -1,0 +1,525 @@
+// Prisma schema for Funda MRP
+// We use raw SQL for the actual tables (init.sql) because of multi-schema support.
+// This schema is for Prisma Client generation only.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://demo_disabled@127.0.0.1:1/demo_disabled"
+  schemas  = ["public", "staging", "mrp_out"]
+}
+
+// === MRP Run Management ===
+model MrpRun {
+  id           Int       @id @default(autoincrement())
+  versionCode  String    @unique @map("version_code")
+  runDate      DateTime  @map("run_date") @db.Date
+  status       String    @default("pending")
+  orderDemandContractVersion String                   @default("order-demand-v1") @map("order_demand_contract_version")
+  isLatest     Boolean   @default(false) @map("is_latest")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz()
+  createdBy    String?   @map("created_by")
+  syncCounts   Json      @default("{}") @map("sync_counts")
+  stepStatus   Json      @default("{}") @map("step_status")
+  stepTiming   Json      @default("{}") @map("step_timing")
+  errorMessage String?   @map("error_message")
+  logs         Json      @default("[]") @map("logs")
+  productionPlanTransfers ProductionPlanTransfer[]
+
+  @@map("mrp_run")
+  @@schema("public")
+}
+
+// === Table Presets (sort/filter/column configs) ===
+model TablePreset {
+  id               Int      @id @default(autoincrement())
+  tableId          String   @map("table_id")
+  presetName       String   @map("preset_name")
+  isDefault        Boolean  @default(false) @map("is_default")
+  sorting          Json     @default("{}") @map("sorting")
+  filtering        Json     @default("{}") @map("filtering")
+  columnVisibility Json     @default("{}") @map("column_visibility")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@unique([tableId, presetName])
+  @@index([tableId])
+  @@map("table_presets")
+  @@schema("public")
+}
+
+// === App Settings (key-value，存忽略清單等全域設定) ===
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("app_settings")
+  @@schema("public")
+}
+
+// === 委外核價變動報表月快照 ===
+// 即時讀 Ragic forms44/2(~6千)+forms31/10(~5千) 每次要 ~1 秒，改存月快照秒開。
+// 一月一筆 upsert（保留歷史月份）；當月超過 TTL 由前端觸發背景重抓。
+model OutsourcePriceChangeSnapshot {
+  month       String   @id // YYYY-MM
+  changes     Json // OutsourcePriceChange[]
+  stats       Json // OutsourceChangeStats
+  generatedAt DateTime @default(now()) @map("generated_at") @db.Timestamptz()
+
+  @@map("outsource_price_change_snapshot")
+  @@schema("public")
+}
+
+// === Staging Tables ===
+model StagingPartVersion {
+  id                 Int      @id @default(autoincrement())
+  mrpRunId           Int      @map("mrp_run_id")
+  ragicRecordId      String?  @map("ragic_record_id")
+  customerCode       String?  @map("customer_code")
+  customerPartNo     String?  @map("customer_part_no")
+  partVersion        String   @map("part_version")
+  erpPartNo          String?  @map("erp_part_no")
+  forgingMachine     String?  @map("forging_machine")
+  firstProcess       String?  @map("first_process")
+  forgingParent      String?  @map("forging_parent")
+  processBomVersion  String?  @map("process_bom_version")
+  targetStockPeriods Decimal? @map("target_stock_periods")
+  surfaceTreatment   String?  @map("surface_treatment")
+  unitWeightG        Decimal? @map("unit_weight_g")
+  mainMaterialKg     Decimal? @map("main_material_kg")
+  sortGroup          Int?     @map("sort_group")
+  productStatus      String?  @map("product_status")
+  versionStatus      String?  @map("version_status")
+  unit               String?
+  skipFgInventory    Boolean  @default(false) @map("skip_fg_inventory")
+
+  @@index([mrpRunId], map: "idx_staging_parts")
+  @@map("part_versions")
+  @@schema("staging")
+}
+
+model StagingInventory {
+  id                Int      @id @default(autoincrement())
+  mrpRunId          Int      @map("mrp_run_id")
+  ragicRecordId     String?  @map("ragic_record_id")
+  erpPartNo         String   @map("erp_part_no")
+  subtypeCode       String?  @map("subtype_code")
+  itemStatus        String?  @map("item_status")
+  goodStockPc       Decimal  @default(0) @map("good_stock_pc")
+  goodStockKg       Decimal  @default(0) @map("good_stock_kg")
+  inStockPc         Decimal? @map("in_stock_pc")
+  inStockKg         Decimal? @map("in_stock_kg")
+  wfgStockPc        Decimal? @map("wfg_stock_pc")
+  wfgStockKg        Decimal? @map("wfg_stock_kg")
+  ye1StockPc        Decimal? @map("ye1_stock_pc")
+  ye1StockKg        Decimal? @map("ye1_stock_kg")
+  badStockPc        Decimal  @default(0) @map("bad_stock_pc")
+  badStockKg        Decimal  @default(0) @map("bad_stock_kg")
+  unit              String?
+  purchaseLeadWeeks Decimal  @default(0) @map("purchase_lead_weeks")
+  purchaseLeadWeeksConfigured Boolean? @map("purchase_lead_weeks_configured")
+
+  @@index([mrpRunId, erpPartNo], map: "idx_staging_inv")
+  @@map("inventory")
+  @@schema("staging")
+}
+
+model StagingInventoryLot {
+  id                  Int      @id @default(autoincrement())
+  mrpRunId            Int      @map("mrp_run_id")
+  ragicRecordId       String   @map("ragic_record_id")
+  lotNo               String?  @map("lot_no")
+  erpPartNo           String   @map("erp_part_no")
+  warehouseCode       String?  @map("warehouse_code")
+  stockStatus         String?  @map("stock_status")
+  qualityStatus       String?  @map("quality_status")
+  stockPc             Decimal  @default(0) @map("stock_pc")
+  stockKg             Decimal  @default(0) @map("stock_kg")
+  unitWeightG         Decimal? @map("unit_weight_g")
+  expectedStockPc     Decimal? @map("expected_stock_pc")
+  stockPcDiff         Decimal? @map("stock_pc_diff")
+  stockPcDiffPct      Decimal? @map("stock_pc_diff_pct")
+  quantityAnomaly     Boolean  @default(false) @map("quantity_anomaly")
+  sourceWorkOrderNo   String?  @map("source_work_order_no")
+  sourceWorkOrderType String?  @map("source_work_order_type")
+
+  @@unique([mrpRunId, ragicRecordId])
+  @@index([mrpRunId, erpPartNo])
+  @@index([mrpRunId, erpPartNo, warehouseCode])
+  @@map("inventory_lots")
+  @@schema("staging")
+}
+
+model StagingOrder {
+  id                 Int       @id @default(autoincrement())
+  mrpRunId           Int       @map("mrp_run_id")
+  ragicRecordId      String?   @map("ragic_record_id")
+  partVersion        String?   @map("part_version")
+  // 訂單明細識別與流程實績；月推 v2 使用 direct shippedQty 認列人工結案已履行量。
+  orderNo            String?   @map("order_no")
+  customerPartNo     String?   @map("customer_part_no")
+  orderQty           Decimal   @default(0) @map("order_qty")
+  preparedQty        Decimal?  @map("prepared_qty") @db.Decimal
+  unprepQty          Decimal   @default(0) @map("unprep_qty")
+  shippedQty         Decimal?  @map("shipped_qty") @db.Decimal
+  unshippedQty       Decimal   @default(0) @map("unshipped_qty")
+  soldQty            Decimal?  @map("sold_qty") @db.Decimal
+  unsoldQty          Decimal   @default(0) @map("unsold_qty")
+  orderType          String?   @map("order_type")
+  deliveryDate       DateTime? @map("delivery_date") @db.Date
+  designatedShipDate DateTime? @map("designated_ship_date") @db.Date
+  shipmentStatus     String?   @map("shipment_status")
+  salesStatus        String?   @map("sales_status")
+  prepStatus         String?   @map("prep_status")
+
+  @@index([mrpRunId, partVersion], map: "idx_staging_orders")
+  @@map("orders")
+  @@schema("staging")
+}
+
+model StagingForecast {
+  id            Int       @id @default(autoincrement())
+  mrpRunId      Int       @map("mrp_run_id")
+  ragicRecordId String?   @map("ragic_record_id")
+  partVersion   String?   @map("part_version")
+  forecastQty   Decimal   @default(0) @map("forecast_qty")
+  forecastStart DateTime? @map("forecast_start") @db.Date
+
+  @@index([mrpRunId, partVersion], map: "idx_staging_forecasts")
+  @@map("forecasts")
+  @@schema("staging")
+}
+
+model StagingWorkOrder {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int       @map("mrp_run_id")
+  ragicRecordId  String?   @map("ragic_record_id")
+  // Ragic 1005984 ([工令單]工令單號). Joins to BOM rows via wo_number.
+  woNumber       String?   @map("wo_number")
+  partVersion    String?   @map("part_version")
+  erpPartNo      String?   @map("erp_part_no")
+  subProcessCode String?   @map("sub_process_code")
+  jobOrderCode   String?   @map("job_order_code")
+  woQty          Decimal   @default(0) @map("wo_qty")
+  startDate      DateTime? @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
+  status         String?
+  // Ragic 1034110 ([工令單]領過料?). The BOM-side field "[工令單]領過料?" Ragic
+  // shows in the BOM form view is actually a join from this WO field — it
+  // doesn't exist on BOM rows themselves.
+  alreadyPicked  String?   @map("already_picked")
+
+  @@index([mrpRunId, woNumber])
+  @@map("work_orders")
+  @@schema("staging")
+}
+
+model StagingWorkOrderBom {
+  id                  Int       @id @default(autoincrement())
+  mrpRunId            Int       @map("mrp_run_id")
+  ragicRecordId       String?   @map("ragic_record_id")
+  componentNo         String?   @map("component_no")
+  woNumber            String?   @map("wo_number")
+  sourceType          String?   @map("source_type")
+  processCode         String?   @map("process_code")
+  unit                String?
+  minUsage            Decimal   @default(0) @map("min_usage")
+  alreadyPicked       String?   @map("already_picked")
+  issuedQty           Decimal?  @map("issued_qty")
+  grossIssuedQty      Decimal?  @map("gross_issued_qty")
+  consumedQty         Decimal?  @map("consumed_qty") @db.Decimal
+  returnedQty         Decimal?  @map("returned_qty")
+  netIssuedQty        Decimal?  @map("net_issued_qty")
+  reservedQty         Decimal?  @map("reserved_qty") @db.Decimal
+  remainingUsage      Decimal?  @map("remaining_usage")
+  overIssuedQty       Decimal?  @map("over_issued_qty")
+  issuedQtyState      String    @default("not_issued") @map("issued_qty_state")
+  issuedDetailCount   Int       @default(0) @map("issued_detail_count")
+  issuedQtyError      String?   @map("issued_qty_error")
+  movementState       String    @default("fallback") @map("movement_state")
+  movementDetailCount Int       @default(0) @map("movement_detail_count")
+  movementError       String?   @map("movement_error")
+  startDate           DateTime? @map("start_date") @db.Date
+
+  @@index([mrpRunId, componentNo])
+  @@index([mrpRunId, woNumber])
+  @@map("work_order_bom")
+  @@schema("staging")
+}
+
+model StagingWorkOrderMaterialMovement {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int       @map("mrp_run_id")
+  ragicRecordId  String    @map("ragic_record_id")
+  workOrderNo    String    @map("work_order_no")
+  bomItemKey     String?   @map("bom_item_key")
+  inventoryLotNo String?   @map("inventory_lot_no")
+  componentNo    String?   @map("component_no")
+  movementDate   DateTime? @map("movement_date") @db.Date
+  basisType      String?   @map("basis_type")
+  movementType   String?   @map("movement_type")
+  inputUnit      String?   @map("input_unit")
+  inputQtyPc     Decimal?  @map("input_qty_pc")
+  inputQtyKg     Decimal?  @map("input_qty_kg")
+  movementQtyPc  Decimal?  @map("movement_qty_pc")
+  movementQtyKg  Decimal?  @map("movement_qty_kg")
+
+  @@unique([mrpRunId, ragicRecordId])
+  @@index([mrpRunId, workOrderNo, componentNo], map: "idx_staging_wo_movements_lookup")
+  @@index([mrpRunId, inventoryLotNo], map: "idx_staging_wo_movements_lot")
+  @@map("work_order_material_movements")
+  @@schema("staging")
+}
+
+model StagingProductionPlan {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int       @map("mrp_run_id")
+  ragicRecordId  String?   @map("ragic_record_id")
+  planNo         String?   @map("plan_no")
+  partVersion    String?   @map("part_version")
+  erpPartNo      String?   @map("erp_part_no")
+  planQty        Decimal   @default(0) @map("plan_qty")
+  completionDate DateTime? @map("completion_date") @db.Date
+  reportedQty    Decimal   @default(0) @map("reported_qty")
+  closedQty      Decimal   @default(0) @map("closed_qty")
+  status         String?
+
+  @@index([mrpRunId, partVersion], map: "idx_staging_plans")
+  @@map("production_plans")
+  @@schema("staging")
+}
+
+model StagingPurchaseOrder {
+  id            Int       @id @default(autoincrement())
+  mrpRunId      Int       @map("mrp_run_id")
+  ragicRecordId String?   @map("ragic_record_id")
+  productNo     String?   @map("product_no")
+  deliveryDate  DateTime? @map("delivery_date") @db.Date
+  unreceivedQty Decimal   @default(0) @map("unreceived_qty")
+  category      String?
+  status        String?
+
+  @@index([mrpRunId, productNo], map: "idx_staging_po")
+  @@map("purchase_orders")
+  @@schema("staging")
+}
+
+// === Output Tables ===
+model FgMonthly {
+  id                        Int       @id @default(autoincrement())
+  mrpRunId                  Int       @map("mrp_run_id")
+  partVersion               String    @map("part_version")
+  customerPartNo            String?   @map("customer_part_no")
+  customerCode              String?   @map("customer_code")
+  erpPartNo                 String?   @map("erp_part_no")
+  forgingMachine            String?   @map("forging_machine")
+  firstProcess              String?   @map("first_process")
+  surfaceTreatment          String?   @map("surface_treatment")
+  forgingParent             String?   @map("forging_parent")
+  processBomVersion         String?   @map("process_bom_version")
+  productStatus             String?   @map("product_status")
+  stockPeriods              Decimal?  @map("stock_periods")
+  sortGroup                 Int?      @map("sort_group")
+  unitWeightG               Decimal?  @map("unit_weight_g")
+  mainMaterialKg            Decimal?  @map("main_material_kg")
+  currentStockPc            Decimal   @default(0) @map("current_stock_pc")
+  wfgStockPc                Decimal?  @map("wfg_stock_pc")
+  ye1StockPc                Decimal?  @map("ye1_stock_pc")
+  badStockPc                Decimal   @default(0) @map("bad_stock_pc")
+  skipFgInventory           Boolean   @default(false) @map("skip_fg_inventory")
+  woScheduled               Decimal   @default(0) @map("wo_scheduled")
+  woUnscheduled             Decimal   @default(0) @map("wo_unscheduled")
+  woTotal                   Decimal   @default(0) @map("wo_total")
+  planReportedQty           Decimal   @default(0) @map("plan_reported_qty")
+  planClosedQty             Decimal   @default(0) @map("plan_closed_qty")
+  shortageStartPeriod       Int?      @map("shortage_start_period")
+  shortageStartPeriodNoPlan Int?      @map("shortage_start_period_no_plan")
+  missingForecastPeriods    Int?      @map("missing_forecast_periods")
+  shouldPlanProduction      Boolean   @default(false) @map("should_plan_production")
+  priorUnshippedQty         Decimal   @default(0) @map("prior_unshipped_qty")
+  totalUnshippedQty         Decimal   @default(0) @map("total_unshipped_qty")
+  totalPlanSupply           Decimal   @default(0) @map("total_plan_supply")
+  priorPlanQty              Decimal   @default(0) @map("prior_plan_qty")
+  period1PlanQty            Decimal   @default(0) @map("period1_plan_qty")
+  editingBy                 String?   @map("editing_by")
+  editingSince              DateTime? @map("editing_since") @db.Timestamptz()
+  // Aggregation: when true, this row represents a 主件聚合 group whose part_version is the
+  // group's representative customer-part-base; aggregatedMembers lists the constituent variants.
+  isAggregated              Boolean   @default(false) @map("is_aggregated")
+  aggregatedMembers         String[]  @default([]) @map("aggregated_members")
+
+  @@unique([mrpRunId, partVersion, isAggregated])
+  @@map("fg_monthly")
+  @@schema("mrp_out")
+}
+
+model FgMonthlyPeriod {
+  id               Int       @id @default(autoincrement())
+  mrpRunId         Int       @map("mrp_run_id")
+  partVersion      String    @map("part_version")
+  periodIndex      Int       @map("period_index")
+  periodLabel      String?   @map("period_label")
+  periodStart      DateTime? @map("period_start") @db.Date
+  periodEnd        DateTime? @map("period_end") @db.Date
+  remainingStock   Decimal?  @map("remaining_stock")
+  remainingNoPlan  Decimal?  @map("remaining_no_plan")
+  demandIntegrated Decimal?  @map("demand_integrated")
+  ordersUnshipped  Decimal?  @map("orders_unshipped")
+  ordersTotal      Decimal?  @map("orders_total")
+  forecastQty      Decimal?  @map("forecast_qty")
+  plannedOutput    Decimal?  @map("planned_output")
+  isAggregated     Boolean   @default(false) @map("is_aggregated")
+
+  @@unique([mrpRunId, partVersion, periodIndex, isAggregated])
+  @@map("fg_monthly_periods")
+  @@schema("mrp_out")
+}
+
+model FgPlanSuggestion {
+  id                Int       @id @default(autoincrement())
+  mrpRunId          Int       @map("mrp_run_id")
+  partVersion       String    @map("part_version")
+  planSequence      Int       @map("plan_sequence")
+  targetStartPeriod Int?      @map("target_start_period")
+  fulfillToPeriod   Decimal?  @map("fulfill_to_period")
+  suggestedQty      Decimal?  @map("suggested_qty")
+  completionDate    DateTime? @map("completion_date") @db.Date
+  materialWeightKg  Decimal?  @map("material_weight_kg")
+  bufferPct         Decimal   @default(0.10) @map("buffer_pct")
+  useManualQty      Boolean   @default(false) @map("use_manual_qty")
+  isTransferred     Boolean   @default(false) @map("is_transferred")
+  transferredAt     DateTime? @map("transferred_at") @db.Timestamptz()
+  transferStatus    String    @default("idle") @map("transfer_status")
+  transferError     String?   @map("transfer_error")
+  transferStartedAt DateTime? @map("transfer_started_at") @db.Timestamptz()
+
+  @@unique([mrpRunId, partVersion, planSequence])
+  @@map("fg_plan_suggestions")
+  @@schema("mrp_out")
+}
+
+model ProductionPlanTransfer {
+  id                   Int       @id @default(autoincrement())
+  mrpRunId             Int?      @map("mrp_run_id")
+  mrpRun               MrpRun?   @relation(fields: [mrpRunId], references: [id], onDelete: SetNull, map: "production_plan_transfers_mrp_run_id_fkey")
+  mrpVersionCode       String    @map("mrp_version_code")
+  partVersion          String    @map("part_version")
+  planSequence         Int       @map("plan_sequence")
+  customerCode         String?   @map("customer_code")
+  suggestedQty         Decimal?  @map("suggested_qty")
+  completionDate       DateTime? @map("completion_date") @db.Date
+  ragicRecordId        String?   @map("ragic_record_id")
+  ragicPlanNo          String?   @map("ragic_plan_no")
+  ragicUrl             String?   @map("ragic_url")
+  sentData             Json?     @map("sent_data")
+  ragicResponse        Json?     @map("ragic_response")
+  inventoryWarning     Json?     @map("inventory_warning")
+  transferredAt        DateTime  @default(now()) @map("transferred_at") @db.Timestamptz()
+  transferredBy        String?   @map("transferred_by")
+  workOrderStatus      String    @default("idle") @map("work_order_status")
+  workOrderError       String?   @map("work_order_error")
+  workOrderStartedAt   DateTime? @map("work_order_started_at") @db.Timestamptz()
+  workOrderCompletedAt DateTime? @map("work_order_completed_at") @db.Timestamptz()
+  workOrderResponse    Json?     @map("work_order_response")
+
+  @@map("production_plan_transfers")
+  @@schema("mrp_out")
+}
+
+model ComponentWeekly {
+  id                Int     @id @default(autoincrement())
+  mrpRunId          Int     @map("mrp_run_id")
+  materialPartNo    String  @map("material_part_no")
+  mrpType           String  @map("mrp_type")
+  unit              String?
+  goodStockPc       Decimal @default(0) @map("good_stock_pc")
+  goodStockKg       Decimal @default(0) @map("good_stock_kg")
+  badStockPc        Decimal @default(0) @map("bad_stock_pc")
+  badStockKg        Decimal @default(0) @map("bad_stock_kg")
+  avgWeeklyUsage    Decimal @default(0) @map("avg_weekly_usage")
+  stockWeeks        Decimal @default(0) @map("stock_weeks")
+  purchaseLeadWeeks Decimal @default(0) @map("purchase_lead_weeks")
+  purchaseLeadWeeksConfigured Boolean?  @map("purchase_lead_weeks_configured")
+  shortageStartWeek Int?    @map("shortage_start_week")
+  shortageStartDate           DateTime? @map("shortage_start_date") @db.Date
+  shortageQty                 Decimal   @default(0) @map("shortage_qty") @db.Decimal
+  weeksUntilOrder   Int?    @map("weeks_until_order")
+  orderByDate                 DateTime? @map("order_by_date") @db.Date
+  purchaseAction              String?   @map("purchase_action")
+  overduePurchaseQty          Decimal   @default(0) @map("overdue_purchase_qty") @db.Decimal
+  overduePurchaseCount        Int       @default(0) @map("overdue_purchase_count")
+  futurePurchaseQty           Decimal   @default(0) @map("future_purchase_qty") @db.Decimal
+  futurePurchaseCount         Int       @default(0) @map("future_purchase_count")
+  nextPurchaseReceiptDate     DateTime? @map("next_purchase_receipt_date") @db.Date
+
+  @@unique([mrpRunId, materialPartNo, mrpType])
+  @@map("component_weekly")
+  @@schema("mrp_out")
+}
+
+model ComponentWeeklyPeriod {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int       @map("mrp_run_id")
+  materialPartNo String    @map("material_part_no")
+  mrpType        String    @map("mrp_type")
+  weekIndex      Int       @map("week_index")
+  weekLabel      String?   @map("week_label")
+  weekStart      DateTime? @map("week_start") @db.Date
+  remainingStock Decimal?  @map("remaining_stock")
+  usage          Decimal   @default(0)
+  receipts       Decimal   @default(0)
+
+  @@unique([mrpRunId, materialPartNo, mrpType, weekIndex])
+  @@map("component_weekly_periods")
+  @@schema("mrp_out")
+}
+
+model SalesMeeting {
+  id                Int     @id @default(autoincrement())
+  mrpRunId          Int     @map("mrp_run_id")
+  customerCode      String? @map("customer_code")
+  partVersion       String  @map("part_version")
+  erpPartNo         String? @map("erp_part_no")
+  unit              String?
+  goodStockPc       Decimal @default(0) @map("good_stock_pc")
+  goodStockKg       Decimal @default(0) @map("good_stock_kg")
+  wfgStockPc        Decimal? @map("wfg_stock_pc")
+  ye1StockPc        Decimal? @map("ye1_stock_pc")
+  badStockPc        Decimal @default(0) @map("bad_stock_pc")
+  badStockKg        Decimal @default(0) @map("bad_stock_kg")
+  avgDemandPerWeek  Decimal @default(0) @map("avg_demand_per_week")
+  stockWeeks        Decimal @default(0) @map("stock_weeks")
+  shortageStartWeek Int?    @map("shortage_start_week")
+  purchaseLeadWeeks Decimal @default(0) @map("purchase_lead_weeks")
+  outstanding04     Decimal @default(0) @map("outstanding_0_4")
+  fgDiff04          Decimal @default(0) @map("fg_diff_0_4")
+  fgStatus04        String? @map("fg_status_0_4")
+  totalOrderDemand  Decimal @default(0) @map("total_order_demand")
+  totalFgDiff       Decimal @default(0) @map("total_fg_diff")
+
+  @@unique([mrpRunId, partVersion])
+  @@index([mrpRunId, customerCode], map: "idx_sales_meeting_run_customer")
+  @@map("sales_meeting")
+  @@schema("mrp_out")
+}
+
+model SalesMeetingPeriod {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int       @map("mrp_run_id")
+  partVersion    String    @map("part_version")
+  weekIndex      Int       @map("week_index")
+  weekLabel      String?   @map("week_label")
+  weekStart      DateTime? @map("week_start") @db.Date
+  remainingStock Decimal?  @map("remaining_stock")
+  demand         Decimal   @default(0)
+  supply         Decimal   @default(0)
+
+  @@unique([mrpRunId, partVersion, weekIndex])
+  @@map("sales_meeting_periods")
+  @@schema("mrp_out")
+}

@@ -1,0 +1,2867 @@
+{
+  "G1": {
+    "public.mrp_run": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "version_code",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "run_date",
+        "type": "date",
+        "notNull": true
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "is_latest",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "notNull": true
+      },
+      {
+        "name": "completed_at",
+        "type": "timestamp with time zone",
+        "notNull": false
+      },
+      {
+        "name": "created_by",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "sync_counts",
+        "type": "jsonb",
+        "notNull": true
+      },
+      {
+        "name": "step_status",
+        "type": "jsonb",
+        "notNull": true
+      },
+      {
+        "name": "step_timing",
+        "type": "jsonb",
+        "notNull": true
+      },
+      {
+        "name": "error_message",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "logs",
+        "type": "jsonb",
+        "notNull": true
+      }
+    ],
+    "staging.part_versions": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "customer_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "customer_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forging_machine",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "first_process",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forging_parent",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "process_bom_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "target_stock_periods",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "surface_treatment",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unit_weight_g",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "main_material_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "sort_group",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "product_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "version_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "skip_fg_inventory",
+        "type": "boolean",
+        "notNull": true
+      }
+    ],
+    "staging.inventory": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "subtype_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "good_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "good_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "purchase_lead_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "in_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "in_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "wfg_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "wfg_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "ye1_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "ye1_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      }
+    ],
+    "staging.inventory_lots": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "lot_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "warehouse_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "stock_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "quality_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "unit_weight_g",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "expected_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "stock_pc_diff",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "stock_pc_diff_pct",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "quantity_anomaly",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "source_work_order_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "source_work_order_type",
+        "type": "text",
+        "notNull": false
+      }
+    ],
+    "staging.orders": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "order_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "unshipped_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "delivery_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "shipment_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "sales_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "designated_ship_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "prep_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "customer_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "order_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unprep_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "unsold_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      }
+    ],
+    "staging.forecasts": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forecast_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "forecast_start",
+        "type": "date",
+        "notNull": false
+      }
+    ],
+    "staging.work_orders": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "wo_number",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "sub_process_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "job_order_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "wo_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "end_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "already_picked",
+        "type": "text",
+        "notNull": false
+      }
+    ],
+    "staging.work_order_bom": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "component_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "wo_number",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "source_type",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "process_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "min_usage",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "already_picked",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "issued_detail_count",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "issued_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "issued_qty_error",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "issued_qty_state",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "remaining_usage",
+        "type": "numeric(65,30)",
+        "notNull": false
+      }
+    ],
+    "staging.work_order_material_movements": null,
+    "staging.production_plans": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "plan_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "completion_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "reported_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "closed_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "plan_no",
+        "type": "text",
+        "notNull": false
+      }
+    ],
+    "staging.purchase_orders": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "product_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "delivery_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "unreceived_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "category",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "notNull": false
+      }
+    ],
+    "mrp_out.fg_monthly": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "customer_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "customer_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forging_machine",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "first_process",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "surface_treatment",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forging_parent",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "process_bom_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "product_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "stock_periods",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "sort_group",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "unit_weight_g",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "main_material_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "current_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "skip_fg_inventory",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "wo_scheduled",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "wo_unscheduled",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "wo_total",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "plan_reported_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "plan_closed_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "shortage_start_period",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "missing_forecast_periods",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "should_plan_production",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "prior_unshipped_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "total_unshipped_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "total_plan_supply",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "prior_plan_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "period1_plan_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "editing_by",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "editing_since",
+        "type": "timestamp with time zone",
+        "notNull": false
+      },
+      {
+        "name": "is_aggregated",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "aggregated_members",
+        "type": "text[]",
+        "notNull": false
+      },
+      {
+        "name": "shortage_start_period_no_plan",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "wfg_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "ye1_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      }
+    ],
+    "mrp_out.fg_monthly_periods": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "period_index",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "period_label",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "period_start",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "period_end",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "remaining_stock",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "remaining_no_plan",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "demand_integrated",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "orders_unshipped",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "orders_total",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "forecast_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "planned_output",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "is_aggregated",
+        "type": "boolean",
+        "notNull": true
+      }
+    ],
+    "mrp_out.fg_plan_suggestions": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "plan_sequence",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "target_start_period",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "fulfill_to_period",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "suggested_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "completion_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "material_weight_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "buffer_pct",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "use_manual_qty",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "is_transferred",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "transferred_at",
+        "type": "timestamp with time zone",
+        "notNull": false
+      },
+      {
+        "name": "transfer_error",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "transfer_started_at",
+        "type": "timestamp with time zone",
+        "notNull": false
+      },
+      {
+        "name": "transfer_status",
+        "type": "text",
+        "notNull": true
+      }
+    ],
+    "mrp_out.component_weekly": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "material_part_no",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "mrp_type",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "good_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "good_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "avg_weekly_usage",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "stock_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "purchase_lead_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "shortage_start_week",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "weeks_until_order",
+        "type": "integer",
+        "notNull": false
+      }
+    ],
+    "mrp_out.component_weekly_periods": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "material_part_no",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "mrp_type",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "week_index",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "week_label",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "week_start",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "remaining_stock",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "usage",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "receipts",
+        "type": "numeric(65,30)",
+        "notNull": true
+      }
+    ],
+    "mrp_out.sales_meeting": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "good_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "good_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "avg_demand_per_week",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "stock_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "shortage_start_week",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "purchase_lead_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "outstanding_0_4",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "fg_diff_0_4",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "fg_status_0_4",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "total_order_demand",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "total_fg_diff",
+        "type": "numeric(65,30)",
+        "notNull": true
+      }
+    ],
+    "mrp_out.sales_meeting_periods": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "week_index",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "week_label",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "week_start",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "remaining_stock",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "demand",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "supply",
+        "type": "numeric(65,30)",
+        "notNull": true
+      }
+    ]
+  },
+  "G4": {
+    "public.mrp_run": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "version_code",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "run_date",
+        "type": "date",
+        "notNull": true
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "is_latest",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "notNull": true
+      },
+      {
+        "name": "completed_at",
+        "type": "timestamp with time zone",
+        "notNull": false
+      },
+      {
+        "name": "created_by",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "sync_counts",
+        "type": "jsonb",
+        "notNull": true
+      },
+      {
+        "name": "step_status",
+        "type": "jsonb",
+        "notNull": true
+      },
+      {
+        "name": "step_timing",
+        "type": "jsonb",
+        "notNull": true
+      },
+      {
+        "name": "error_message",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "logs",
+        "type": "jsonb",
+        "notNull": true
+      },
+      {
+        "name": "order_demand_contract_version",
+        "type": "text",
+        "notNull": true
+      }
+    ],
+    "staging.part_versions": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "customer_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "customer_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forging_machine",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "first_process",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forging_parent",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "process_bom_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "target_stock_periods",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "surface_treatment",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unit_weight_g",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "main_material_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "sort_group",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "product_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "version_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "skip_fg_inventory",
+        "type": "boolean",
+        "notNull": true
+      }
+    ],
+    "staging.inventory": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "subtype_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "good_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "good_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "purchase_lead_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "in_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "in_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "wfg_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "wfg_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "ye1_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "ye1_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "item_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "purchase_lead_weeks_configured",
+        "type": "boolean",
+        "notNull": false
+      }
+    ],
+    "staging.inventory_lots": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "lot_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "warehouse_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "stock_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "quality_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "unit_weight_g",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "expected_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "stock_pc_diff",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "stock_pc_diff_pct",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "quantity_anomaly",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "source_work_order_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "source_work_order_type",
+        "type": "text",
+        "notNull": false
+      }
+    ],
+    "staging.orders": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "order_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "unshipped_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "delivery_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "shipment_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "sales_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "designated_ship_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "prep_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "customer_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "order_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unprep_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "unsold_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "order_type",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "prepared_qty",
+        "type": "numeric",
+        "notNull": false
+      },
+      {
+        "name": "shipped_qty",
+        "type": "numeric",
+        "notNull": false
+      },
+      {
+        "name": "sold_qty",
+        "type": "numeric",
+        "notNull": false
+      }
+    ],
+    "staging.forecasts": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forecast_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "forecast_start",
+        "type": "date",
+        "notNull": false
+      }
+    ],
+    "staging.work_orders": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "wo_number",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "sub_process_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "job_order_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "wo_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "end_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "already_picked",
+        "type": "text",
+        "notNull": false
+      }
+    ],
+    "staging.work_order_bom": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "component_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "wo_number",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "source_type",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "process_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "min_usage",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "already_picked",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "issued_detail_count",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "issued_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "issued_qty_error",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "issued_qty_state",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "remaining_usage",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "gross_issued_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "movement_detail_count",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "movement_error",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "movement_state",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "net_issued_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "over_issued_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "returned_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "consumed_qty",
+        "type": "numeric",
+        "notNull": false
+      },
+      {
+        "name": "reserved_qty",
+        "type": "numeric",
+        "notNull": false
+      }
+    ],
+    "staging.work_order_material_movements": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "work_order_no",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "bom_item_key",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "inventory_lot_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "component_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "movement_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "basis_type",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "movement_type",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "input_unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "input_qty_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "input_qty_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "movement_qty_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "movement_qty_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      }
+    ],
+    "staging.production_plans": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "plan_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "completion_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "reported_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "closed_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "plan_no",
+        "type": "text",
+        "notNull": false
+      }
+    ],
+    "staging.purchase_orders": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "ragic_record_id",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "product_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "delivery_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "unreceived_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "category",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "status",
+        "type": "text",
+        "notNull": false
+      }
+    ],
+    "mrp_out.fg_monthly": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "customer_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "customer_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forging_machine",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "first_process",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "surface_treatment",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "forging_parent",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "process_bom_version",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "product_status",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "stock_periods",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "sort_group",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "unit_weight_g",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "main_material_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "current_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "skip_fg_inventory",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "wo_scheduled",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "wo_unscheduled",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "wo_total",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "plan_reported_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "plan_closed_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "shortage_start_period",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "missing_forecast_periods",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "should_plan_production",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "prior_unshipped_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "total_unshipped_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "total_plan_supply",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "prior_plan_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "period1_plan_qty",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "editing_by",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "editing_since",
+        "type": "timestamp with time zone",
+        "notNull": false
+      },
+      {
+        "name": "is_aggregated",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "aggregated_members",
+        "type": "text[]",
+        "notNull": false
+      },
+      {
+        "name": "shortage_start_period_no_plan",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "wfg_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "ye1_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      }
+    ],
+    "mrp_out.fg_monthly_periods": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "period_index",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "period_label",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "period_start",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "period_end",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "remaining_stock",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "remaining_no_plan",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "demand_integrated",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "orders_unshipped",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "orders_total",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "forecast_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "planned_output",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "is_aggregated",
+        "type": "boolean",
+        "notNull": true
+      }
+    ],
+    "mrp_out.fg_plan_suggestions": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "plan_sequence",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "target_start_period",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "fulfill_to_period",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "suggested_qty",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "completion_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "material_weight_kg",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "buffer_pct",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "use_manual_qty",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "is_transferred",
+        "type": "boolean",
+        "notNull": true
+      },
+      {
+        "name": "transferred_at",
+        "type": "timestamp with time zone",
+        "notNull": false
+      },
+      {
+        "name": "transfer_error",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "transfer_started_at",
+        "type": "timestamp with time zone",
+        "notNull": false
+      },
+      {
+        "name": "transfer_status",
+        "type": "text",
+        "notNull": true
+      }
+    ],
+    "mrp_out.component_weekly": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "material_part_no",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "mrp_type",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "good_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "good_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "avg_weekly_usage",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "stock_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "purchase_lead_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "shortage_start_week",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "weeks_until_order",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "future_purchase_count",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "future_purchase_qty",
+        "type": "numeric",
+        "notNull": true
+      },
+      {
+        "name": "next_purchase_receipt_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "order_by_date",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "overdue_purchase_count",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "overdue_purchase_qty",
+        "type": "numeric",
+        "notNull": true
+      },
+      {
+        "name": "purchase_action",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "purchase_lead_weeks_configured",
+        "type": "boolean",
+        "notNull": false
+      },
+      {
+        "name": "shortage_qty",
+        "type": "numeric",
+        "notNull": true
+      },
+      {
+        "name": "shortage_start_date",
+        "type": "date",
+        "notNull": false
+      }
+    ],
+    "mrp_out.component_weekly_periods": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "material_part_no",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "mrp_type",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "week_index",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "week_label",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "week_start",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "remaining_stock",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "usage",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "receipts",
+        "type": "numeric(65,30)",
+        "notNull": true
+      }
+    ],
+    "mrp_out.sales_meeting": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "erp_part_no",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "unit",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "good_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "good_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "bad_stock_kg",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "avg_demand_per_week",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "stock_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "shortage_start_week",
+        "type": "integer",
+        "notNull": false
+      },
+      {
+        "name": "purchase_lead_weeks",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "outstanding_0_4",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "fg_diff_0_4",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "fg_status_0_4",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "total_order_demand",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "total_fg_diff",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "customer_code",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "wfg_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "ye1_stock_pc",
+        "type": "numeric(65,30)",
+        "notNull": false
+      }
+    ],
+    "mrp_out.sales_meeting_periods": [
+      {
+        "name": "id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "mrp_run_id",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "part_version",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "week_index",
+        "type": "integer",
+        "notNull": true
+      },
+      {
+        "name": "week_label",
+        "type": "text",
+        "notNull": false
+      },
+      {
+        "name": "week_start",
+        "type": "date",
+        "notNull": false
+      },
+      {
+        "name": "remaining_stock",
+        "type": "numeric(65,30)",
+        "notNull": false
+      },
+      {
+        "name": "demand",
+        "type": "numeric(65,30)",
+        "notNull": true
+      },
+      {
+        "name": "supply",
+        "type": "numeric(65,30)",
+        "notNull": true
+      }
+    ]
+  }
+}

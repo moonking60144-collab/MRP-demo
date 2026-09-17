@@ -1,0 +1,602 @@
+// Archive metadata is separate from the production client and database.
+// Snapshot table imports are not verified merely by registering a seed.
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/archive-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://demo_disabled@127.0.0.1:1/demo_disabled_archive"
+  schemas  = ["archive_meta", "archive_data"]
+}
+
+model ArchiveSource {
+  sha256          String   @id @db.Char(64)
+  sourceInstance  String   @map("source_instance")
+  seedFileName    String   @map("seed_file_name")
+  sourceFileName  String   @map("source_file_name")
+  schemaGeneration String @map("schema_generation")
+  sizeBytes       BigInt   @map("size_bytes")
+  manifest        Json
+  hashVerifiedAt  DateTime @map("hash_verified_at") @db.Timestamptz()
+  registeredAt    DateTime @default(now()) @map("registered_at") @db.Timestamptz()
+  runs            ArchiveSourceRun[]
+  attempts        ArchiveImportAttempt[]
+
+  @@unique([sha256, sourceInstance])
+  @@map("archive_sources")
+  @@schema("archive_meta")
+}
+
+model ArchiveSourceRun {
+  sourceSha256 String @map("source_sha256") @db.Char(64)
+  sourceRunId  Int    @map("source_run_id")
+  sourceInstance String @map("source_instance")
+  source       ArchiveSource @relation(fields: [sourceSha256, sourceInstance], references: [sha256, sourceInstance], onDelete: Restrict)
+  coverage     ArchiveRunCoverage[]
+  attempts     ArchiveImportAttempt[]
+
+  @@id([sourceSha256, sourceRunId])
+  @@unique([sourceSha256, sourceRunId, sourceInstance])
+  @@index([sourceRunId])
+  @@map("archive_source_runs")
+  @@schema("archive_meta")
+}
+
+model ArchiveImportAttempt {
+  id           String   @id @default(uuid()) @db.Uuid
+  sourceSha256 String   @map("source_sha256") @db.Char(64)
+  sourceRunId  Int      @map("source_run_id")
+  status       String   @default("pending")
+  startedAt    DateTime @default(now()) @map("started_at") @db.Timestamptz()
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz()
+  errorCode    String?  @map("error_code")
+  importerVersion String @map("importer_version")
+  source       ArchiveSource @relation(fields: [sourceSha256], references: [sha256], onDelete: Restrict)
+  sourceRun    ArchiveSourceRun @relation(fields: [sourceSha256, sourceRunId], references: [sourceSha256, sourceRunId], onDelete: Restrict)
+  runs         ArchiveRunCoverage[]
+
+  @@unique([id, sourceSha256, sourceRunId])
+  @@map("archive_import_attempts")
+  @@schema("archive_meta")
+}
+
+model ArchiveRunCoverage {
+  id            String   @id @default(uuid()) @db.Uuid
+  sourceInstance String  @map("source_instance")
+  sourceRunId   Int      @map("source_run_id")
+  sourceSha256  String   @map("source_sha256") @db.Char(64)
+  attemptId     String   @map("attempt_id") @db.Uuid
+  versionCode   String   @map("version_code")
+  runDate       DateTime @map("run_date") @db.Date
+  sourceStatus  String   @map("source_status")
+  orderDemandContractVersion String? @map("order_demand_contract_version")
+  sourceRun     Json     @map("source_run")
+  status        String   @default("pending")
+  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz()
+  source        ArchiveSourceRun @relation(fields: [sourceSha256, sourceRunId, sourceInstance], references: [sourceSha256, sourceRunId, sourceInstance], onDelete: Restrict)
+  attempt       ArchiveImportAttempt @relation(fields: [attemptId, sourceSha256, sourceRunId], references: [id, sourceSha256, sourceRunId], onDelete: Restrict)
+  tables        ArchiveTableVerification[]
+  snapshotMrpRun SnapshotMrpRun[]
+  snapshotStagingPartVersion SnapshotStagingPartVersion[]
+  snapshotStagingInventory SnapshotStagingInventory[]
+  snapshotStagingInventoryLot SnapshotStagingInventoryLot[]
+  snapshotStagingOrder SnapshotStagingOrder[]
+  snapshotStagingForecast SnapshotStagingForecast[]
+  snapshotStagingWorkOrder SnapshotStagingWorkOrder[]
+  snapshotStagingWorkOrderBom SnapshotStagingWorkOrderBom[]
+  snapshotStagingWorkOrderMaterialMovement SnapshotStagingWorkOrderMaterialMovement[]
+  snapshotStagingProductionPlan SnapshotStagingProductionPlan[]
+  snapshotStagingPurchaseOrder SnapshotStagingPurchaseOrder[]
+  snapshotFgMonthly SnapshotFgMonthly[]
+  snapshotFgMonthlyPeriod SnapshotFgMonthlyPeriod[]
+  snapshotFgPlanSuggestion SnapshotFgPlanSuggestion[]
+  snapshotComponentWeekly SnapshotComponentWeekly[]
+  snapshotComponentWeeklyPeriod SnapshotComponentWeeklyPeriod[]
+  snapshotSalesMeeting SnapshotSalesMeeting[]
+  snapshotSalesMeetingPeriod SnapshotSalesMeetingPeriod[]
+
+  // One selected source per Run; importing an overlapping dump cannot replace it.
+  @@unique([sourceInstance, sourceRunId])
+  @@index([status, runDate])
+  @@map("archive_run_coverage")
+  @@schema("archive_meta")
+}
+
+model ArchiveTableVerification {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  tableName    String @map("table_name")
+  status       String @default("pending")
+  sourcePresent Boolean @map("source_present")
+  sourceColumns Json @map("source_columns")
+  missingColumns Json @map("missing_columns")
+  sourceRows   BigInt? @map("source_rows")
+  archiveRows  BigInt? @map("archive_rows")
+  sourceDigest String? @map("source_digest") @db.Char(64)
+  archiveDigest String? @map("archive_digest") @db.Char(64)
+  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz()
+  run          ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, tableName])
+  @@map("archive_table_verification")
+  @@schema("archive_meta")
+}
+
+// Business columns are nullable; an absent historical field is not a synthesized zero.
+model SnapshotMrpRun {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  versionCode String? @map("version_code")
+  runDate DateTime? @map("run_date") @db.Date
+  status String?
+  orderDemandContractVersion String? @map("order_demand_contract_version")
+  isLatest Boolean? @map("is_latest")
+  createdAt DateTime? @map("created_at") @db.Timestamptz()
+  completedAt DateTime? @map("completed_at") @db.Timestamptz()
+  createdBy String? @map("created_by")
+  syncCounts Json? @map("sync_counts")
+  stepStatus Json? @map("step_status")
+  stepTiming Json? @map("step_timing")
+  errorMessage String? @map("error_message")
+  logs Json? @map("logs")
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@map("public_mrp_run")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingPartVersion {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  customerCode String? @map("customer_code")
+  customerPartNo String? @map("customer_part_no")
+  partVersion String? @map("part_version")
+  erpPartNo String? @map("erp_part_no")
+  forgingMachine String? @map("forging_machine")
+  firstProcess String? @map("first_process")
+  forgingParent String? @map("forging_parent")
+  processBomVersion String? @map("process_bom_version")
+  targetStockPeriods Decimal? @map("target_stock_periods") @db.Decimal
+  surfaceTreatment String? @map("surface_treatment")
+  unitWeightG Decimal? @map("unit_weight_g") @db.Decimal
+  mainMaterialKg Decimal? @map("main_material_kg") @db.Decimal
+  sortGroup Int? @map("sort_group")
+  productStatus String? @map("product_status")
+  versionStatus String? @map("version_status")
+  unit String?
+  skipFgInventory Boolean? @map("skip_fg_inventory")
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("staging_part_versions")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingInventory {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  erpPartNo String? @map("erp_part_no")
+  subtypeCode String? @map("subtype_code")
+  itemStatus String? @map("item_status")
+  goodStockPc Decimal? @map("good_stock_pc") @db.Decimal
+  goodStockKg Decimal? @map("good_stock_kg") @db.Decimal
+  inStockPc Decimal? @map("in_stock_pc") @db.Decimal
+  inStockKg Decimal? @map("in_stock_kg") @db.Decimal
+  wfgStockPc Decimal? @map("wfg_stock_pc") @db.Decimal
+  wfgStockKg Decimal? @map("wfg_stock_kg") @db.Decimal
+  ye1StockPc Decimal? @map("ye1_stock_pc") @db.Decimal
+  ye1StockKg Decimal? @map("ye1_stock_kg") @db.Decimal
+  badStockPc Decimal? @map("bad_stock_pc") @db.Decimal
+  badStockKg Decimal? @map("bad_stock_kg") @db.Decimal
+  unit String?
+  purchaseLeadWeeks Decimal? @map("purchase_lead_weeks") @db.Decimal
+  purchaseLeadWeeksConfigured Boolean? @map("purchase_lead_weeks_configured")
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, erpPartNo])
+  @@map("staging_inventory")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingInventoryLot {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  lotNo String? @map("lot_no")
+  erpPartNo String? @map("erp_part_no")
+  warehouseCode String? @map("warehouse_code")
+  stockStatus String? @map("stock_status")
+  qualityStatus String? @map("quality_status")
+  stockPc Decimal? @map("stock_pc") @db.Decimal
+  stockKg Decimal? @map("stock_kg") @db.Decimal
+  unitWeightG Decimal? @map("unit_weight_g") @db.Decimal
+  expectedStockPc Decimal? @map("expected_stock_pc") @db.Decimal
+  stockPcDiff Decimal? @map("stock_pc_diff") @db.Decimal
+  stockPcDiffPct Decimal? @map("stock_pc_diff_pct") @db.Decimal
+  quantityAnomaly Boolean? @map("quantity_anomaly")
+  sourceWorkOrderNo String? @map("source_work_order_no")
+  sourceWorkOrderType String? @map("source_work_order_type")
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, erpPartNo])
+  @@map("staging_inventory_lots")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingOrder {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  partVersion String? @map("part_version")
+  orderNo String? @map("order_no")
+  customerPartNo String? @map("customer_part_no")
+  orderQty Decimal? @map("order_qty") @db.Decimal
+  preparedQty Decimal? @map("prepared_qty") @db.Decimal
+  unprepQty Decimal? @map("unprep_qty") @db.Decimal
+  shippedQty Decimal? @map("shipped_qty") @db.Decimal
+  unshippedQty Decimal? @map("unshipped_qty") @db.Decimal
+  soldQty Decimal? @map("sold_qty") @db.Decimal
+  unsoldQty Decimal? @map("unsold_qty") @db.Decimal
+  orderType String? @map("order_type")
+  deliveryDate DateTime? @map("delivery_date") @db.Date
+  designatedShipDate DateTime? @map("designated_ship_date") @db.Date
+  shipmentStatus String? @map("shipment_status")
+  salesStatus String? @map("sales_status")
+  prepStatus String? @map("prep_status")
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("staging_orders")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingForecast {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  partVersion String? @map("part_version")
+  forecastQty Decimal? @map("forecast_qty") @db.Decimal
+  forecastStart DateTime? @map("forecast_start") @db.Date
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("staging_forecasts")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingWorkOrder {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  woNumber String? @map("wo_number")
+  partVersion String? @map("part_version")
+  erpPartNo String? @map("erp_part_no")
+  subProcessCode String? @map("sub_process_code")
+  jobOrderCode String? @map("job_order_code")
+  woQty Decimal? @map("wo_qty") @db.Decimal
+  startDate DateTime? @map("start_date") @db.Date
+  endDate DateTime? @map("end_date") @db.Date
+  status String?
+  alreadyPicked String? @map("already_picked")
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("staging_work_orders")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingWorkOrderBom {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  componentNo String? @map("component_no")
+  woNumber String? @map("wo_number")
+  sourceType String? @map("source_type")
+  processCode String? @map("process_code")
+  unit String?
+  minUsage Decimal? @map("min_usage") @db.Decimal
+  alreadyPicked String? @map("already_picked")
+  issuedQty Decimal? @map("issued_qty") @db.Decimal
+  grossIssuedQty Decimal? @map("gross_issued_qty") @db.Decimal
+  consumedQty Decimal? @map("consumed_qty") @db.Decimal
+  returnedQty Decimal? @map("returned_qty") @db.Decimal
+  netIssuedQty Decimal? @map("net_issued_qty") @db.Decimal
+  reservedQty Decimal? @map("reserved_qty") @db.Decimal
+  remainingUsage Decimal? @map("remaining_usage") @db.Decimal
+  overIssuedQty Decimal? @map("over_issued_qty") @db.Decimal
+  issuedQtyState String? @map("issued_qty_state")
+  issuedDetailCount Int? @map("issued_detail_count")
+  issuedQtyError String? @map("issued_qty_error")
+  movementState String? @map("movement_state")
+  movementDetailCount Int? @map("movement_detail_count")
+  movementError String? @map("movement_error")
+  startDate DateTime? @map("start_date") @db.Date
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@map("staging_work_order_bom")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingWorkOrderMaterialMovement {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  workOrderNo String? @map("work_order_no")
+  bomItemKey String? @map("bom_item_key")
+  inventoryLotNo String? @map("inventory_lot_no")
+  componentNo String? @map("component_no")
+  movementDate DateTime? @map("movement_date") @db.Date
+  basisType String? @map("basis_type")
+  movementType String? @map("movement_type")
+  inputUnit String? @map("input_unit")
+  inputQtyPc Decimal? @map("input_qty_pc") @db.Decimal
+  inputQtyKg Decimal? @map("input_qty_kg") @db.Decimal
+  movementQtyPc Decimal? @map("movement_qty_pc") @db.Decimal
+  movementQtyKg Decimal? @map("movement_qty_kg") @db.Decimal
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@map("staging_work_order_material_movements")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingProductionPlan {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  planNo String? @map("plan_no")
+  partVersion String? @map("part_version")
+  erpPartNo String? @map("erp_part_no")
+  planQty Decimal? @map("plan_qty") @db.Decimal
+  completionDate DateTime? @map("completion_date") @db.Date
+  reportedQty Decimal? @map("reported_qty") @db.Decimal
+  closedQty Decimal? @map("closed_qty") @db.Decimal
+  status String?
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("staging_production_plans")
+  @@schema("archive_data")
+}
+
+model SnapshotStagingPurchaseOrder {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  ragicRecordId String? @map("ragic_record_id")
+  productNo String? @map("product_no")
+  deliveryDate DateTime? @map("delivery_date") @db.Date
+  unreceivedQty Decimal? @map("unreceived_qty") @db.Decimal
+  category String?
+  status String?
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@map("staging_purchase_orders")
+  @@schema("archive_data")
+}
+
+model SnapshotFgMonthly {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  partVersion String? @map("part_version")
+  customerPartNo String? @map("customer_part_no")
+  customerCode String? @map("customer_code")
+  erpPartNo String? @map("erp_part_no")
+  forgingMachine String? @map("forging_machine")
+  firstProcess String? @map("first_process")
+  surfaceTreatment String? @map("surface_treatment")
+  forgingParent String? @map("forging_parent")
+  processBomVersion String? @map("process_bom_version")
+  productStatus String? @map("product_status")
+  stockPeriods Decimal? @map("stock_periods") @db.Decimal
+  sortGroup Int? @map("sort_group")
+  unitWeightG Decimal? @map("unit_weight_g") @db.Decimal
+  mainMaterialKg Decimal? @map("main_material_kg") @db.Decimal
+  currentStockPc Decimal? @map("current_stock_pc") @db.Decimal
+  wfgStockPc Decimal? @map("wfg_stock_pc") @db.Decimal
+  ye1StockPc Decimal? @map("ye1_stock_pc") @db.Decimal
+  badStockPc Decimal? @map("bad_stock_pc") @db.Decimal
+  skipFgInventory Boolean? @map("skip_fg_inventory")
+  woScheduled Decimal? @map("wo_scheduled") @db.Decimal
+  woUnscheduled Decimal? @map("wo_unscheduled") @db.Decimal
+  woTotal Decimal? @map("wo_total") @db.Decimal
+  planReportedQty Decimal? @map("plan_reported_qty") @db.Decimal
+  planClosedQty Decimal? @map("plan_closed_qty") @db.Decimal
+  shortageStartPeriod Int? @map("shortage_start_period")
+  shortageStartPeriodNoPlan Int? @map("shortage_start_period_no_plan")
+  missingForecastPeriods Int? @map("missing_forecast_periods")
+  shouldPlanProduction Boolean? @map("should_plan_production")
+  priorUnshippedQty Decimal? @map("prior_unshipped_qty") @db.Decimal
+  totalUnshippedQty Decimal? @map("total_unshipped_qty") @db.Decimal
+  totalPlanSupply Decimal? @map("total_plan_supply") @db.Decimal
+  priorPlanQty Decimal? @map("prior_plan_qty") @db.Decimal
+  period1PlanQty Decimal? @map("period1_plan_qty") @db.Decimal
+  editingBy String? @map("editing_by")
+  editingSince DateTime? @map("editing_since") @db.Timestamptz()
+  isAggregated Boolean? @map("is_aggregated")
+  aggregatedMembers Json? @map("aggregated_members")
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("mrp_out_fg_monthly")
+  @@schema("archive_data")
+}
+
+model SnapshotFgMonthlyPeriod {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  partVersion String? @map("part_version")
+  periodIndex Int? @map("period_index")
+  periodLabel String? @map("period_label")
+  periodStart DateTime? @map("period_start") @db.Date
+  periodEnd DateTime? @map("period_end") @db.Date
+  remainingStock Decimal? @map("remaining_stock") @db.Decimal
+  remainingNoPlan Decimal? @map("remaining_no_plan") @db.Decimal
+  demandIntegrated Decimal? @map("demand_integrated") @db.Decimal
+  ordersUnshipped Decimal? @map("orders_unshipped") @db.Decimal
+  ordersTotal Decimal? @map("orders_total") @db.Decimal
+  forecastQty Decimal? @map("forecast_qty") @db.Decimal
+  plannedOutput Decimal? @map("planned_output") @db.Decimal
+  isAggregated Boolean? @map("is_aggregated")
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("mrp_out_fg_monthly_periods")
+  @@schema("archive_data")
+}
+
+model SnapshotFgPlanSuggestion {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  partVersion String? @map("part_version")
+  planSequence Int? @map("plan_sequence")
+  targetStartPeriod Int? @map("target_start_period")
+  fulfillToPeriod Decimal? @map("fulfill_to_period") @db.Decimal
+  suggestedQty Decimal? @map("suggested_qty") @db.Decimal
+  completionDate DateTime? @map("completion_date") @db.Date
+  materialWeightKg Decimal? @map("material_weight_kg") @db.Decimal
+  bufferPct Decimal? @map("buffer_pct") @db.Decimal
+  useManualQty Boolean? @map("use_manual_qty")
+  isTransferred Boolean? @map("is_transferred")
+  transferredAt DateTime? @map("transferred_at") @db.Timestamptz()
+  transferStatus String? @map("transfer_status")
+  transferError String? @map("transfer_error")
+  transferStartedAt DateTime? @map("transfer_started_at") @db.Timestamptz()
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("mrp_out_fg_plan_suggestions")
+  @@schema("archive_data")
+}
+
+model SnapshotComponentWeekly {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  materialPartNo String? @map("material_part_no")
+  mrpType String? @map("mrp_type")
+  unit String?
+  goodStockPc Decimal? @map("good_stock_pc") @db.Decimal
+  goodStockKg Decimal? @map("good_stock_kg") @db.Decimal
+  badStockPc Decimal? @map("bad_stock_pc") @db.Decimal
+  badStockKg Decimal? @map("bad_stock_kg") @db.Decimal
+  avgWeeklyUsage Decimal? @map("avg_weekly_usage") @db.Decimal
+  stockWeeks Decimal? @map("stock_weeks") @db.Decimal
+  purchaseLeadWeeks Decimal? @map("purchase_lead_weeks") @db.Decimal
+  purchaseLeadWeeksConfigured Boolean? @map("purchase_lead_weeks_configured")
+  shortageStartWeek Int? @map("shortage_start_week")
+  shortageStartDate DateTime? @map("shortage_start_date") @db.Date
+  shortageQty Decimal? @map("shortage_qty") @db.Decimal
+  weeksUntilOrder Int? @map("weeks_until_order")
+  orderByDate DateTime? @map("order_by_date") @db.Date
+  purchaseAction String? @map("purchase_action")
+  overduePurchaseQty Decimal? @map("overdue_purchase_qty") @db.Decimal
+  overduePurchaseCount Int? @map("overdue_purchase_count")
+  futurePurchaseQty Decimal? @map("future_purchase_qty") @db.Decimal
+  futurePurchaseCount Int? @map("future_purchase_count")
+  nextPurchaseReceiptDate DateTime? @map("next_purchase_receipt_date") @db.Date
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, materialPartNo])
+  @@map("mrp_out_component_weekly")
+  @@schema("archive_data")
+}
+
+model SnapshotComponentWeeklyPeriod {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  materialPartNo String? @map("material_part_no")
+  mrpType String? @map("mrp_type")
+  weekIndex Int? @map("week_index")
+  weekLabel String? @map("week_label")
+  weekStart DateTime? @map("week_start") @db.Date
+  remainingStock Decimal? @map("remaining_stock") @db.Decimal
+  usage Decimal?  @db.Decimal
+  receipts Decimal?  @db.Decimal
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, materialPartNo])
+  @@map("mrp_out_component_weekly_periods")
+  @@schema("archive_data")
+}
+
+model SnapshotSalesMeeting {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  customerCode String? @map("customer_code")
+  partVersion String? @map("part_version")
+  erpPartNo String? @map("erp_part_no")
+  unit String?
+  goodStockPc Decimal? @map("good_stock_pc") @db.Decimal
+  goodStockKg Decimal? @map("good_stock_kg") @db.Decimal
+  wfgStockPc Decimal? @map("wfg_stock_pc") @db.Decimal
+  ye1StockPc Decimal? @map("ye1_stock_pc") @db.Decimal
+  badStockPc Decimal? @map("bad_stock_pc") @db.Decimal
+  badStockKg Decimal? @map("bad_stock_kg") @db.Decimal
+  avgDemandPerWeek Decimal? @map("avg_demand_per_week") @db.Decimal
+  stockWeeks Decimal? @map("stock_weeks") @db.Decimal
+  shortageStartWeek Int? @map("shortage_start_week")
+  purchaseLeadWeeks Decimal? @map("purchase_lead_weeks") @db.Decimal
+  outstanding04 Decimal? @map("outstanding_0_4") @db.Decimal
+  fgDiff04 Decimal? @map("fg_diff_0_4") @db.Decimal
+  fgStatus04 String? @map("fg_status_0_4")
+  totalOrderDemand Decimal? @map("total_order_demand") @db.Decimal
+  totalFgDiff Decimal? @map("total_fg_diff") @db.Decimal
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("mrp_out_sales_meeting")
+  @@schema("archive_data")
+}
+
+model SnapshotSalesMeetingPeriod {
+  archiveRunId String @map("archive_run_id") @db.Uuid
+  id Int
+  mrpRunId Int @map("mrp_run_id")
+  partVersion String? @map("part_version")
+  weekIndex Int? @map("week_index")
+  weekLabel String? @map("week_label")
+  weekStart DateTime? @map("week_start") @db.Date
+  remainingStock Decimal? @map("remaining_stock") @db.Decimal
+  demand Decimal?  @db.Decimal
+  supply Decimal?  @db.Decimal
+  run ArchiveRunCoverage @relation(fields: [archiveRunId], references: [id], onDelete: Restrict)
+
+  @@id([archiveRunId, id])
+  @@index([archiveRunId, partVersion])
+  @@map("mrp_out_sales_meeting_periods")
+  @@schema("archive_data")
+}
