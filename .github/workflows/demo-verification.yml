@@ -1,0 +1,70 @@
+name: Demo technology verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-demo:
+    name: Offline demo (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test:smoke
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: offline-smoke-${{ matrix.os }}
+          path: release/offline-smoke.json
+
+  postgres-contract:
+    name: Real Prisma and PostgreSQL contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: mrp_demo_test
+          POSTGRES_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+          POSTGRES_DB: mrp_demo_prisma_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mrp_demo_test -d mrp_demo_prisma_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:postgres
+        env:
+          MRP_DEMO_TEST_DATABASE_URL: postgresql://mrp_demo_test:${{ github.run_id }}-${{ github.run_attempt }}@127.0.0.1:5432/mrp_demo_prisma_test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: prisma-postgres-contracts
+          path: release/prisma-postgres.json
