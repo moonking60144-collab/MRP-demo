@@ -15,7 +15,7 @@ if not exist ".next\BUILD_ID" (
   call npm run build
   if errorlevel 1 goto :failed
 )
-echo MRP Interview Demo: http://127.0.0.1:3000
+echo MRP Demo: http://127.0.0.1:3000
 echo Keep this window open. Ctrl+C stops the demo.
 start "" "http://127.0.0.1:3000"
 call npm start

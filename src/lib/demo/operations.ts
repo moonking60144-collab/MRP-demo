@@ -25,7 +25,7 @@ export function requireLatest(runId: unknown): void {
 }
 function transferRecord(suggestion: DemoRow): DemoRow {
   const id = Math.max(0, ...state().transfers.map((item) => Number(item.id))) + 1;
-  return modelRow('ProductionPlanTransfer', { id, mrpRunId: suggestion.mrpRunId, mrpVersionCode: latestRun().versionCode, partVersion: suggestion.partVersion, planSequence: suggestion.planSequence, customerCode: dataset(latestRun().id).fg.find((row) => row.partVersion === suggestion.partVersion)?.customerCode, suggestedQty: suggestion.suggestedQty, completionDate: suggestion.completionDate, sourceRecordId: String(100000 + id), sourcePlanNo: `DEMO-PLAN-${id}`, sourceUrl: `/demo-record?type=production_plan&id=${100000 + id}`, transferredAt: new Date().toISOString(), transferredBy: 'Interview Demo', workOrderStatus: 'idle' });
+  return modelRow('ProductionPlanTransfer', { id, mrpRunId: suggestion.mrpRunId, mrpVersionCode: latestRun().versionCode, partVersion: suggestion.partVersion, planSequence: suggestion.planSequence, customerCode: dataset(latestRun().id).fg.find((row) => row.partVersion === suggestion.partVersion)?.customerCode, suggestedQty: suggestion.suggestedQty, completionDate: suggestion.completionDate, sourceRecordId: String(100000 + id), sourcePlanNo: `DEMO-PLAN-${id}`, sourceUrl: `/demo-record?type=production_plan&id=${100000 + id}`, transferredAt: new Date().toISOString(), transferredBy: 'Demo', workOrderStatus: 'idle' });
 }
 export function saveSuggestion(partVersion: string, body: DemoRow): DemoRow {
   requireLatest(body.runId);

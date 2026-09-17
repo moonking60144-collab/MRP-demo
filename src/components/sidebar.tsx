@@ -81,7 +81,7 @@ export function Sidebar() {
         >
           {open ? <X size={19} strokeWidth={2} /> : <Menu size={19} strokeWidth={2} />}
         </button>
-        <span className="text-sm font-bold text-slate-800">MRP Interview Demo</span>
+        <span className="text-sm font-bold text-slate-800">MRP Demo</span>
       </div>
 
       {/* Overlay (mobile only) */}
@@ -105,7 +105,7 @@ export function Sidebar() {
         {/* Header — title + desktop collapse toggle */}
         <div className="flex min-h-[74px] items-start justify-between gap-1 border-b border-slate-200 bg-white px-3 py-3">
           <div className={hideOnCollapse}>
-            <h1 className="text-base font-bold text-slate-800">MRP Interview Demo</h1>
+            <h1 className="text-base font-bold text-slate-800">MRP Demo</h1>
             <p className="text-[10px] text-slate-400 mt-0.5">物料需求規劃</p>
             <DbStatusBadge />
           </div>
@@ -158,7 +158,7 @@ export function Sidebar() {
           </>}
         </div>
 
-        <div className={`mx-3 mb-2 rounded bg-blue-50 px-2 py-2 text-[10px] text-blue-700 ${hideOnCollapse}`}>面試展示 · 全合成資料 · 不連公司系統</div>
+        <div className={`mx-3 mb-2 rounded bg-blue-50 px-2 py-2 text-[10px] text-blue-700 ${hideOnCollapse}`}>Demo · 全合成資料 · 不連外部系統</div>
         <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-2.5" aria-label="主要導覽">
           {NAV_ITEMS.map((item) => {
             const active = item.href === '/'

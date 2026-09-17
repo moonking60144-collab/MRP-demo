@@ -10,7 +10,7 @@ import { BOOTSTRAP_RECOVERY_SCRIPT } from '@/lib/bootstrap-recovery';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'MRP Interview Demo',
+  title: 'MRP Demo',
   description: '物料需求規劃展示・全部使用合成資料',
 };
 
