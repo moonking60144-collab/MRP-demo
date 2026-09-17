@@ -3,11 +3,14 @@
 沿用既有 MRP 程式、頁面與進階表格操作的 Demo 展示版；所有 runtime 資料改用合成資料。
 此專案不是重新開發的介面，也不是公司資料庫的複本。
 
+技術展示與實測入口：[技術證據說明](docs/technology-evidence.md)。一般展示免資料庫；另有真正的 Prisma／PostgreSQL 驗證，不用把公司環境帶入 Demo。
+
 ## 隔離邊界
 
 - 不帶入 `.env`、真實資料、備份、Git 歷史或公司的部署腳本。
 - 所有 `/api/*` 的可執行入口固定轉送本機 `demo-api`；原 handler 保存在 `reference/production-api`，不是可發布路由。
 - 真實 Prisma client 與 Archive PostgreSQL reader 禁止使用。
+- 上述限制適用展示網站；獨立 `test:postgres` CLI 只接受用途受限的本機合成測試庫，不對網站開放真實 DB 存取。
 - 不啟動原有 Source 探測、備份、保留、轉單及工令背景工作。
 - Source 原單連結改成本機合成紀錄；不帶公司的金鑰、帳密或 session。
 - 原版成品月推、元件週推與產銷計算引擎實際讀取合成輸入、產生記憶體輸出；不以動畫代替計算。
@@ -56,6 +59,8 @@ production 啟動的合成状态位於 `.next/standalone/demo-data/state.json`�
 
 `npm test` 驗證 demo API/lifecycle 與保留的原版純計算契約；不代表公司 DB/Source integration tests 已在 demo 執行。
 `npm run lint` 與 `npm run build` 可獨立執行。
+`npm run test:postgres:local` 使用已安裝的 PostgreSQL 工具建立一次性測試庫，實測原引擎的 Prisma 讀寫、結果對帳、交易回滾與 Run 隔離。一般展示不必執行它。
+GitHub Actions 分別執行 Linux／Windows 離線 build 與 HTTP smoke，以及 Linux PostgreSQL 17 整合驗證；是否成功需核對對應 commit 的遠端執行紀錄。
 2026-09-17 相容範圍依賴修補後，`npm audit` 仍有 10 項（7 high、2 moderate、1 low，沒有 critical）。
 保留框架 major version，未使用 `npm audit fix --force`。Prisma config/工具鏈、停用的 SMTP 與 XLSX 等有未清除警告。
 本版只供本機 Demo 展示，不應直接公開部署成 production 服務。
