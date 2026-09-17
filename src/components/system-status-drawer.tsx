@@ -5,8 +5,8 @@ import { X, Activity } from 'lucide-react';
 import { StorageCapacityPanel, useStorageCapacity } from './storage-capacity-panel';
 import styles from './system-status-drawer.module.css';
 
-export function SystemStatusDrawer({ children, loading, incomplete, issueCount, onRefresh }: {
-  children: ReactNode; loading: boolean; incomplete: boolean; issueCount: number; onRefresh: () => void;
+export function SystemStatusDrawer({ children, loading, incomplete, issueCount, onRefresh, demo = false }: {
+  children: ReactNode; loading: boolean; incomplete: boolean; issueCount: number; onRefresh: () => void; demo?: boolean;
 }) {
   const storage = useStorageCapacity();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -15,8 +15,8 @@ export function SystemStatusDrawer({ children, loading, incomplete, issueCount, 
   const capacityIssues = storage.data?.volumes.filter(volume => volume.warning || volume.critical).length ?? 0;
   const totalIssues = issueCount + capacityIssues;
   const unknown = incomplete || storage.error || !storage.data || storage.data.warnings.length > 0;
-  const label = totalIssues ? `需留意 ${totalIssues}` : loading || storage.loading ? '檢查中' : unknown ? '資訊未完整取得' : '正常';
-  const iconState = totalIssues ? 'warning' : loading || storage.loading || unknown ? 'unknown' : 'normal';
+  const label = totalIssues ? `需留意 ${totalIssues}` : loading || storage.loading ? '檢查中' : unknown ? '資訊未完整取得' : demo ? 'Demo 模擬狀態' : '正常';
+  const iconState = totalIssues ? 'warning' : loading || storage.loading || unknown ? 'unknown' : demo ? 'demo' : 'normal';
   useEffect(() => {
     if (!open) return;
     const modal = dialog.current;
@@ -53,7 +53,7 @@ export function SystemStatusDrawer({ children, loading, incomplete, issueCount, 
       className="fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-[560px] border-0 border-l border-slate-200 bg-slate-50 p-0 text-left text-slate-800 shadow-xl backdrop:bg-slate-900/25">
       {open && <div className="flex h-full min-h-0 flex-col">
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3">
-          <div><h2 id="system-status-title" className="text-base font-semibold">系統狀態</h2><p className="mt-1 text-xs text-slate-500">目前伺服器的維運資訊，不影響歷史版本選擇。</p></div>
+          <div><h2 id="system-status-title" className="text-base font-semibold">系統狀態</h2><p className="mt-1 text-xs text-slate-500">{demo ? '本機合成資料與維運展示，不影響歷史版本選擇。' : '目前伺服器的維運資訊，不影響歷史版本選擇。'}</p></div>
           <button type="button" aria-label="關閉系統狀態" autoFocus onClick={() => setOpen(false)}
             className="flex size-11 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"><X size={18} /></button>
         </header>

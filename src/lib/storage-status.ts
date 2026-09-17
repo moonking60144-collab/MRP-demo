@@ -4,6 +4,7 @@ import prisma, { currentDbMode } from './db';
 import { withSharedArchiveReader } from './archive-db';
 
 export interface StorageStatus {
+  demo?: boolean;
   measuredAt: string;
   databaseMode: string;
   database: { name: string; bytes: number } | null;

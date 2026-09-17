@@ -105,7 +105,7 @@ test('三張既有報表匯出用 limit=100000，回傳完整篩選集而不是�
 });
 
 test('空資料集仍接受合法 schema facet，非法欄位維持拒絕', async () => {
-  const emptySource = await query(source, { table: 'work_order_material_movements', facet: 'workOrderNo', facetType: 'text', facetQuery: 'demo' });
+  const emptySource = await query(source, { table: 'work_order_material_movements', search: 'EMPTY_MOVEMENT_FIXTURE', facet: 'workOrderNo', facetType: 'text', facetQuery: 'demo' });
   assert.equal(emptySource.response.status, 200);
   assert.deepEqual(emptySource.body.options, []);
   assert.equal((await query(source, { table: 'work_order_material_movements', facet: 'unknownColumn', facetType: 'text' })).response.status, 400);

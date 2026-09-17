@@ -13,12 +13,16 @@
   color: #b45309;
 }
 
+.indicator[data-state='demo'] {
+  color: #475569;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .indicator:not([data-state='unknown']) {
+  .indicator[data-state='normal'], .indicator[data-state='warning'] {
     animation: breathe 3.6s ease-in-out infinite;
   }
 
-  .indicator:not([data-state='unknown'])::before {
+  .indicator[data-state='normal']::before, .indicator[data-state='warning']::before {
     content: '';
     position: absolute;
     inset: -4px;
