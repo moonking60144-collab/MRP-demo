@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.next-dev/
+.next-dev-process.json
+demo-data/
+demo-data-backup-*/
+release/
+.env*
+*.log
+*.tsbuildinfo

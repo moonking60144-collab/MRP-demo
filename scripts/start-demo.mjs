@@ -1,0 +1,21 @@
+import { spawn } from 'node:child_process';
+import { cpSync, existsSync, mkdirSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const port = Number(process.env.PORT ?? 3000);
+if (![3000, 3142].includes(port)) throw new Error('Demo 只允許本機 port 3000 或 3142。');
+const server = join(root, '.next', 'standalone', 'server.js');
+if (!existsSync(server)) throw new Error('尚未建置；請先執行 npm ci 與 npm run build。');
+const probe = createServer();
+await new Promise((accept, reject) => { probe.once('error', reject); probe.listen(port, '127.0.0.1', () => probe.close(accept)); });
+const standalone = dirname(server);
+mkdirSync(join(standalone, '.next'), { recursive: true });
+cpSync(join(root, '.next', 'static'), join(standalone, '.next', 'static'), { recursive: true });
+if (existsSync(join(root, 'public'))) cpSync(join(root, 'public'), join(standalone, 'public'), { recursive: true });
+const child = spawn(process.execPath, [server], { cwd: standalone, stdio: 'inherit', env: { ...process.env, HOSTNAME: '127.0.0.1', PORT: String(port) } });
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => child.kill(signal));
+child.once('error', (error) => { console.error(error); process.exitCode = 1; });
+child.once('exit', (code) => { process.exitCode = code ?? 1; });

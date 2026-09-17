@@ -1,0 +1,495 @@
+// Synthetic portfolio schema. It intentionally uses demo-only namespaces and identifiers.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://demo_disabled@127.0.0.1:1/demo_disabled"
+  schemas  = ["demo"]
+}
+
+// === MRP Run Management ===
+model MrpRun {
+  id           Int       @id @default(autoincrement())
+  versionCode  String    @unique
+  runDate      DateTime @db.Date
+  status       String    @default("pending")
+  orderDemandContractVersion String                   @default("order-demand-v1")
+  isLatest     Boolean   @default(false)
+  createdAt    DateTime  @default(now()) @db.Timestamptz()
+  completedAt  DateTime? @db.Timestamptz()
+  createdBy    String?
+  syncCounts   Json      @default("{}")
+  stepStatus   Json      @default("{}")
+  stepTiming   Json      @default("{}")
+  errorMessage String?
+  logs         Json      @default("[]")
+  productionPlanTransfers ProductionPlanTransfer[]
+  @@schema("demo")
+}
+
+// === Table Presets (sort/filter/column configs) ===
+model TablePreset {
+  id               Int      @id @default(autoincrement())
+  tableId          String
+  presetName       String
+  isDefault        Boolean  @default(false)
+  sorting          Json     @default("{}")
+  filtering        Json     @default("{}")
+  columnVisibility Json     @default("{}")
+  createdAt        DateTime @default(now()) @db.Timestamptz()
+  updatedAt        DateTime @updatedAt @db.Timestamptz()
+
+  @@unique([tableId, presetName])
+  @@index([tableId])
+  @@schema("demo")
+}
+
+// === App Settings (key-value，存忽略清單等全域設定) ===
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @db.Timestamptz()
+  @@schema("demo")
+}
+
+// === 委外核價變動報表月快照 ===
+// 合成核價資料使用月快照，保留歷史月份並避免每次重算。
+// 一月一筆 upsert（保留歷史月份）；當月超過 TTL 由前端觸發背景重抓。
+model OutsourcePriceChangeSnapshot {
+  month       String   @id // YYYY-MM
+  changes     Json // OutsourcePriceChange[]
+  stats       Json // OutsourceChangeStats
+  generatedAt DateTime @default(now()) @db.Timestamptz()
+  @@schema("demo")
+}
+
+// === Staging Tables ===
+model StagingPartVersion {
+  id                 Int      @id @default(autoincrement())
+  mrpRunId           Int
+  sourceRecordId      String?
+  customerCode       String?
+  customerPartNo     String?
+  partVersion        String
+  erpPartNo          String?
+  forgingMachine     String?
+  firstProcess       String?
+  forgingParent      String?
+  processBomVersion  String?
+  targetStockPeriods Decimal?
+  surfaceTreatment   String?
+  unitWeightG        Decimal?
+  mainMaterialKg     Decimal?
+  sortGroup          Int?
+  productStatus      String?
+  versionStatus      String?
+  unit               String?
+  skipFgInventory    Boolean  @default(false)
+
+  @@index([mrpRunId])
+  @@schema("demo")
+}
+
+model StagingInventory {
+  id                Int      @id @default(autoincrement())
+  mrpRunId          Int
+  sourceRecordId     String?
+  erpPartNo         String
+  subtypeCode       String?
+  itemStatus        String?
+  goodStockPc       Decimal  @default(0)
+  goodStockKg       Decimal  @default(0)
+  inStockPc         Decimal?
+  inStockKg         Decimal?
+  mainStockPc        Decimal?
+  mainStockKg        Decimal?
+  auxStockPc        Decimal?
+  auxStockKg        Decimal?
+  badStockPc        Decimal  @default(0)
+  badStockKg        Decimal  @default(0)
+  unit              String?
+  purchaseLeadWeeks Decimal  @default(0)
+  purchaseLeadWeeksConfigured Boolean?
+
+  @@index([mrpRunId, erpPartNo])
+  @@schema("demo")
+}
+
+model StagingInventoryLot {
+  id                  Int      @id @default(autoincrement())
+  mrpRunId            Int
+  sourceRecordId       String
+  lotNo               String?
+  erpPartNo           String
+  warehouseCode       String?
+  stockStatus         String?
+  qualityStatus       String?
+  stockPc             Decimal  @default(0)
+  stockKg             Decimal  @default(0)
+  unitWeightG         Decimal?
+  expectedStockPc     Decimal?
+  stockPcDiff         Decimal?
+  stockPcDiffPct      Decimal?
+  quantityAnomaly     Boolean  @default(false)
+  sourceWorkOrderNo   String?
+  sourceWorkOrderType String?
+
+  @@unique([mrpRunId, sourceRecordId])
+  @@index([mrpRunId, erpPartNo])
+  @@index([mrpRunId, erpPartNo, warehouseCode])
+  @@schema("demo")
+}
+
+model StagingOrder {
+  id                 Int       @id @default(autoincrement())
+  mrpRunId           Int
+  sourceRecordId      String?
+  partVersion        String?
+  // 訂單明細識別與流程實績；月推 v2 使用 direct shippedQty 認列人工結案已履行量。
+  orderNo            String?
+  customerPartNo     String?
+  orderQty           Decimal   @default(0)
+  preparedQty        Decimal? @db.Decimal
+  unprepQty          Decimal   @default(0)
+  shippedQty         Decimal? @db.Decimal
+  unshippedQty       Decimal   @default(0)
+  soldQty            Decimal? @db.Decimal
+  unsoldQty          Decimal   @default(0)
+  orderType          String?
+  deliveryDate       DateTime? @db.Date
+  designatedShipDate DateTime? @db.Date
+  shipmentStatus     String?
+  salesStatus        String?
+  prepStatus         String?
+
+  @@index([mrpRunId, partVersion])
+  @@schema("demo")
+}
+
+model StagingForecast {
+  id            Int       @id @default(autoincrement())
+  mrpRunId      Int
+  sourceRecordId String?
+  partVersion   String?
+  forecastQty   Decimal   @default(0)
+  forecastStart DateTime? @db.Date
+
+  @@index([mrpRunId, partVersion])
+  @@schema("demo")
+}
+
+model StagingWorkOrder {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int
+  sourceRecordId  String?
+  // Synthetic work-order identity used to join BOM rows.
+  woNumber       String?
+  partVersion    String?
+  erpPartNo      String?
+  subProcessCode String?
+  jobOrderCode   String?
+  woQty          Decimal   @default(0)
+  startDate      DateTime? @db.Date
+  endDate        DateTime? @db.Date
+  status         String?
+  // Synthetic issue state is carried by the work order and projected into BOM rows.
+  alreadyPicked  String?
+
+  @@index([mrpRunId, woNumber])
+  @@schema("demo")
+}
+
+model StagingWorkOrderBom {
+  id                  Int       @id @default(autoincrement())
+  mrpRunId            Int
+  sourceRecordId       String?
+  componentNo         String?
+  woNumber            String?
+  sourceType          String?
+  processCode         String?
+  unit                String?
+  minUsage            Decimal   @default(0)
+  alreadyPicked       String?
+  issuedQty           Decimal?
+  grossIssuedQty      Decimal?
+  consumedQty         Decimal? @db.Decimal
+  returnedQty         Decimal?
+  netIssuedQty        Decimal?
+  reservedQty         Decimal? @db.Decimal
+  remainingUsage      Decimal?
+  overIssuedQty       Decimal?
+  issuedQtyState      String    @default("not_issued")
+  issuedDetailCount   Int       @default(0)
+  issuedQtyError      String?
+  movementState       String    @default("fallback")
+  movementDetailCount Int       @default(0)
+  movementError       String?
+  startDate           DateTime? @db.Date
+
+  @@index([mrpRunId, componentNo])
+  @@index([mrpRunId, woNumber])
+  @@schema("demo")
+}
+
+model StagingWorkOrderMaterialMovement {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int
+  sourceRecordId  String
+  workOrderNo    String
+  bomItemKey     String?
+  inventoryLotNo String?
+  componentNo    String?
+  movementDate   DateTime? @db.Date
+  basisType      String?
+  movementType   String?
+  inputUnit      String?
+  inputQtyPc     Decimal?
+  inputQtyKg     Decimal?
+  movementQtyPc  Decimal?
+  movementQtyKg  Decimal?
+
+  @@unique([mrpRunId, sourceRecordId])
+  @@index([mrpRunId, workOrderNo, componentNo])
+  @@index([mrpRunId, inventoryLotNo])
+  @@schema("demo")
+}
+
+model StagingProductionPlan {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int
+  sourceRecordId  String?
+  planNo         String?
+  partVersion    String?
+  erpPartNo      String?
+  planQty        Decimal   @default(0)
+  completionDate DateTime? @db.Date
+  reportedQty    Decimal   @default(0)
+  closedQty      Decimal   @default(0)
+  status         String?
+
+  @@index([mrpRunId, partVersion])
+  @@schema("demo")
+}
+
+model StagingPurchaseOrder {
+  id            Int       @id @default(autoincrement())
+  mrpRunId      Int
+  sourceRecordId String?
+  productNo     String?
+  deliveryDate  DateTime? @db.Date
+  unreceivedQty Decimal   @default(0)
+  category      String?
+  status        String?
+
+  @@index([mrpRunId, productNo])
+  @@schema("demo")
+}
+
+// === Output Tables ===
+model FgMonthly {
+  id                        Int       @id @default(autoincrement())
+  mrpRunId                  Int
+  partVersion               String
+  customerPartNo            String?
+  customerCode              String?
+  erpPartNo                 String?
+  forgingMachine            String?
+  firstProcess              String?
+  surfaceTreatment          String?
+  forgingParent             String?
+  processBomVersion         String?
+  productStatus             String?
+  stockPeriods              Decimal?
+  sortGroup                 Int?
+  unitWeightG               Decimal?
+  mainMaterialKg            Decimal?
+  currentStockPc            Decimal   @default(0)
+  mainStockPc                Decimal?
+  auxStockPc                Decimal?
+  badStockPc                Decimal   @default(0)
+  skipFgInventory           Boolean   @default(false)
+  woScheduled               Decimal   @default(0)
+  woUnscheduled             Decimal   @default(0)
+  woTotal                   Decimal   @default(0)
+  planReportedQty           Decimal   @default(0)
+  planClosedQty             Decimal   @default(0)
+  shortageStartPeriod       Int?
+  shortageStartPeriodNoPlan Int?
+  missingForecastPeriods    Int?
+  shouldPlanProduction      Boolean   @default(false)
+  priorUnshippedQty         Decimal   @default(0)
+  totalUnshippedQty         Decimal   @default(0)
+  totalPlanSupply           Decimal   @default(0)
+  priorPlanQty              Decimal   @default(0)
+  period1PlanQty            Decimal   @default(0)
+  editingBy                 String?
+  editingSince              DateTime? @db.Timestamptz()
+  // Aggregation: when true, this row represents a 主件聚合 group whose part_version is the
+  // group's representative customer-part-base; aggregatedMembers lists the constituent variants.
+  isAggregated              Boolean   @default(false)
+  aggregatedMembers         String[]  @default([])
+
+  @@unique([mrpRunId, partVersion, isAggregated])
+  @@schema("demo")
+}
+
+model FgMonthlyPeriod {
+  id               Int       @id @default(autoincrement())
+  mrpRunId         Int
+  partVersion      String
+  periodIndex      Int
+  periodLabel      String?
+  periodStart      DateTime? @db.Date
+  periodEnd        DateTime? @db.Date
+  remainingStock   Decimal?
+  remainingNoPlan  Decimal?
+  demandIntegrated Decimal?
+  ordersUnshipped  Decimal?
+  ordersTotal      Decimal?
+  forecastQty      Decimal?
+  plannedOutput    Decimal?
+  isAggregated     Boolean   @default(false)
+
+  @@unique([mrpRunId, partVersion, periodIndex, isAggregated])
+  @@schema("demo")
+}
+
+model FgPlanSuggestion {
+  id                Int       @id @default(autoincrement())
+  mrpRunId          Int
+  partVersion       String
+  planSequence      Int
+  targetStartPeriod Int?
+  fulfillToPeriod   Decimal?
+  suggestedQty      Decimal?
+  completionDate    DateTime? @db.Date
+  materialWeightKg  Decimal?
+  bufferPct         Decimal   @default(0.10)
+  useManualQty      Boolean   @default(false)
+  isTransferred     Boolean   @default(false)
+  transferredAt     DateTime? @db.Timestamptz()
+  transferStatus    String    @default("idle")
+  transferError     String?
+  transferStartedAt DateTime? @db.Timestamptz()
+
+  @@unique([mrpRunId, partVersion, planSequence])
+  @@schema("demo")
+}
+
+model ProductionPlanTransfer {
+  id                   Int       @id @default(autoincrement())
+  mrpRunId             Int?
+  mrpRun               MrpRun?   @relation(fields: [mrpRunId], references: [id], onDelete: SetNull)
+  mrpVersionCode       String
+  partVersion          String
+  planSequence         Int
+  customerCode         String?
+  suggestedQty         Decimal?
+  completionDate       DateTime? @db.Date
+  sourceRecordId        String?
+  sourcePlanNo          String?
+  sourceUrl             String?
+  sentData             Json?
+  sourceResponse        Json?
+  inventoryWarning     Json?
+  transferredAt        DateTime  @default(now()) @db.Timestamptz()
+  transferredBy        String?
+  workOrderStatus      String    @default("idle")
+  workOrderError       String?
+  workOrderStartedAt   DateTime? @db.Timestamptz()
+  workOrderCompletedAt DateTime? @db.Timestamptz()
+  workOrderResponse    Json?
+  @@schema("demo")
+}
+
+model ComponentWeekly {
+  id                Int     @id @default(autoincrement())
+  mrpRunId          Int
+  materialPartNo    String
+  mrpType           String
+  unit              String?
+  goodStockPc       Decimal @default(0)
+  goodStockKg       Decimal @default(0)
+  badStockPc        Decimal @default(0)
+  badStockKg        Decimal @default(0)
+  avgWeeklyUsage    Decimal @default(0)
+  stockWeeks        Decimal @default(0)
+  purchaseLeadWeeks Decimal @default(0)
+  purchaseLeadWeeksConfigured Boolean?
+  shortageStartWeek Int?
+  shortageStartDate           DateTime? @db.Date
+  shortageQty                 Decimal   @default(0) @db.Decimal
+  weeksUntilOrder   Int?
+  orderByDate                 DateTime? @db.Date
+  purchaseAction              String?
+  overduePurchaseQty          Decimal   @default(0) @db.Decimal
+  overduePurchaseCount        Int       @default(0)
+  futurePurchaseQty           Decimal   @default(0) @db.Decimal
+  futurePurchaseCount         Int       @default(0)
+  nextPurchaseReceiptDate     DateTime? @db.Date
+
+  @@unique([mrpRunId, materialPartNo, mrpType])
+  @@schema("demo")
+}
+
+model ComponentWeeklyPeriod {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int
+  materialPartNo String
+  mrpType        String
+  weekIndex      Int
+  weekLabel      String?
+  weekStart      DateTime? @db.Date
+  remainingStock Decimal?
+  usage          Decimal   @default(0)
+  receipts       Decimal   @default(0)
+
+  @@unique([mrpRunId, materialPartNo, mrpType, weekIndex])
+  @@schema("demo")
+}
+
+model SalesMeeting {
+  id                Int     @id @default(autoincrement())
+  mrpRunId          Int
+  customerCode      String?
+  partVersion       String
+  erpPartNo         String?
+  unit              String?
+  goodStockPc       Decimal @default(0)
+  goodStockKg       Decimal @default(0)
+  mainStockPc        Decimal?
+  auxStockPc        Decimal?
+  badStockPc        Decimal @default(0)
+  badStockKg        Decimal @default(0)
+  avgDemandPerWeek  Decimal @default(0)
+  stockWeeks        Decimal @default(0)
+  shortageStartWeek Int?
+  purchaseLeadWeeks Decimal @default(0)
+  outstanding04     Decimal @default(0)
+  fgDiff04          Decimal @default(0)
+  fgStatus04        String?
+  totalOrderDemand  Decimal @default(0)
+  totalFgDiff       Decimal @default(0)
+
+  @@unique([mrpRunId, partVersion])
+  @@index([mrpRunId, customerCode])
+  @@schema("demo")
+}
+
+model SalesMeetingPeriod {
+  id             Int       @id @default(autoincrement())
+  mrpRunId       Int
+  partVersion    String
+  weekIndex      Int
+  weekLabel      String?
+  weekStart      DateTime? @db.Date
+  remainingStock Decimal?
+  demand         Decimal   @default(0)
+  supply         Decimal   @default(0)
+
+  @@unique([mrpRunId, partVersion, weekIndex])
+  @@schema("demo")
+}

@@ -1,0 +1,39 @@
+.indicator {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.indicator[data-state='normal'] {
+  color: #047857;
+}
+
+.indicator[data-state='warning'] {
+  color: #b45309;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .indicator:not([data-state='unknown']) {
+    animation: breathe 3.6s ease-in-out infinite;
+  }
+
+  .indicator:not([data-state='unknown'])::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    background: radial-gradient(circle, currentColor, transparent 70%);
+    opacity: 0.18;
+    pointer-events: none;
+  }
+
+  .indicator[data-state='warning'] {
+    animation-duration: 3s;
+  }
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
