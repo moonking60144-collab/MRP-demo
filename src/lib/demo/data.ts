@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { state, seedRuns } from './store';
 import { evaluateInventoryLotQuantity } from '../sync/inventory-snapshot';
+import { reconcileWorkOrderBomUsage, type WorkOrderMaterialMovementInput } from '../mrp/work-order-bom-usage';
 
 export type DemoRow = Record<string, unknown>;
 export interface DemoRun { id: number; versionCode: string; runDate: string; status: string; isLatest: boolean; completedAt: string | null; createdAt: string; createdBy: string; duration: number; syncCounts: Record<string, number>; errorMessage: string | null; stepTiming: Record<string, number>; stepStatus: DemoRow; logs: DemoRow[]; attempt: number; }
@@ -116,5 +117,33 @@ export function generateDataset(run: DemoRun = seedRuns()[0]): DemoDataset {
   if (partial) Object.assign(partial, { alreadyPicked: 'Yes', issuedQtyState: 'known', issuedQty: Number(partial.minUsage) / 2, netIssuedQty: Number(partial.minUsage) / 2, grossIssuedQty: Number(partial.minUsage) / 2, remainingUsage: Number(partial.minUsage) / 2, movementState: 'known', consumedQty: 0, reservedQty: Number(partial.minUsage) / 2 });
   const full = result.source.work_order_bom.find((row) => row.componentNo === 'DEMO-D-004' && Number(row.minUsage) > 0);
   if (full) Object.assign(full, { alreadyPicked: 'Yes', issuedQtyState: 'known', issuedQty: full.minUsage, netIssuedQty: full.minUsage, grossIssuedQty: full.minUsage, remainingUsage: 0, movementState: 'known', consumedQty: full.minUsage, reservedQty: 0 });
+  const returned = result.source.work_order_bom.find((row) => row.componentNo === 'DEMO-B-005' && Number(row.minUsage) > 0);
+  const cases = [
+    { bom: partial, gross: Number(partial?.issuedQty), consumed: 0, returned: 0, lotNo: 'DEMO-ISSUED-LOT-B003' },
+    { bom: full, gross: Number(full?.minUsage), consumed: Number(full?.minUsage), returned: 0, lotNo: 'DEMO-ISSUED-LOT-D004' },
+    { bom: returned, gross: Number(returned?.minUsage), consumed: Number(returned?.minUsage), returned: 300, lotNo: 'DEMO-MATERIAL-LOT-DEMO-B-005-2' },
+  ];
+  for (const example of cases) {
+    if (!example.bom) continue;
+    const rows: DemoRow[] = [];
+    const add = (basisType: string, movementType: string, qty: number, movementQty: number, day: number) => {
+      const movementDate = new Date(weekStart(1)); movementDate.setUTCDate(movementDate.getUTCDate() + day);
+      const id = 9000 + result.source.work_order_material_movements.length;
+      const row = modelRow('StagingWorkOrderMaterialMovement', { id, mrpRunId: runId, sourceRecordId: `DEMO-MOVEMENT-${id}`, workOrderNo: example.bom!.woNumber, bomItemKey: example.bom!.sourceRecordId, inventoryLotNo: example.lotNo, componentNo: example.bom!.componentNo, movementDate: movementDate.toISOString(), basisType, movementType, inputUnit: 'pc', inputQtyPc: qty, movementQtyPc: movementQty });
+      rows.push(row); result.source.work_order_material_movements.push(row);
+    };
+    add('入-採購單', 'IN入庫', example.gross, example.gross, 0);
+    add('調-製令單領料', 'TRANS調撥', example.gross, 0, 7);
+    if (example.consumed) add('出-工單耗用', 'OUT出庫', example.consumed, -example.consumed, 8);
+    if (example.returned) add('入-製令單退料', 'IN入庫', example.returned, example.returned, 9);
+    Object.assign(example.bom, { alreadyPicked: 'Yes', issuedQty: example.gross, issuedDetailCount: 1, issuedQtyError: null }, reconcileWorkOrderBomUsage({ plannedUsage: Number(example.bom.minUsage), bomUnit: example.bom.unit, ledgerIssuedQty: example.gross, formUsage: { issuedQty: example.gross, remainingUsage: Math.max(Number(example.bom.minUsage) - example.gross, 0), issuedQtyState: 'known', issuedDetailCount: 1, issuedQtyError: null }, movements: rows as unknown as WorkOrderMaterialMovementInput[], movementSourceAvailable: true }));
+  }
+  for (const inv of result.source.inventory.filter((row) => row.subtypeCode !== 'FG')) {
+    const example = cases.find((row) => row.bom?.componentNo === inv.erpPartNo);
+    const stockPc = Number(inv.goodStockPc), stockKg = Number(inv.goodStockKg);
+    const secondPc = example?.returned || stockPc / 2;
+    for (const index of [1, 2]) result.source.inventory_lots.push(modelRow('StagingInventoryLot', { id: 2000 + result.source.inventory_lots.length, mrpRunId: runId, sourceRecordId: `DEMO-MATERIAL-LOT-${inv.erpPartNo}-${index}`, lotNo: `DEMO-MATERIAL-LOT-${inv.erpPartNo}-${index}`, erpPartNo: inv.erpPartNo, warehouseCode: 'MAIN', qualityStatus: '正常', stockStatus: '在庫', stockPc: index === 1 ? stockPc - secondPc : secondPc, stockKg: example?.returned ? (index === 1 ? stockPc - secondPc : secondPc) / 100 : stockKg / 2, sourceWorkOrderNo: example?.returned && index === 2 ? example.bom?.woNumber : null }));
+    if (example?.bom && !example.returned) result.source.inventory_lots.push(modelRow('StagingInventoryLot', { id: 2000 + result.source.inventory_lots.length, mrpRunId: runId, sourceRecordId: example.lotNo, lotNo: example.lotNo, erpPartNo: inv.erpPartNo, warehouseCode: 'PROCESS', qualityStatus: '正常', stockStatus: example.consumed ? '已結清' : '在製', stockPc: example.gross - example.consumed, stockKg: (example.gross - example.consumed) / 100, sourceWorkOrderNo: example.bom.woNumber }));
+  }
   return result;
 }

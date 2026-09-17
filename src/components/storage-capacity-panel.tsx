@@ -41,19 +41,20 @@ export function StorageCapacityPanel({ state }: { state: ReturnType<typeof useSt
     <section aria-label="容量控管" aria-busy={loading} className="rounded-lg border border-slate-200 bg-white px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-800">磁碟容量</h3>
+          <h3 className="text-sm font-semibold text-slate-800">{data?.demo ? '模擬容量' : '磁碟容量'}</h3>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          {data && <span>量測 {new Date(data.measuredAt).toLocaleString('zh-TW', { hour12: false })}</span>}
+          {data && <span>{data.demo ? '資料時間' : '量測'} {new Date(data.measuredAt).toLocaleString('zh-TW', { hour12: false })}</span>}
           <button type="button" disabled={loading} onClick={refresh}
             className="min-h-11 rounded border border-slate-200 px-3 text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50">
             {loading ? '讀取中…' : '重新整理'}
           </button>
         </div>
       </div>
-      {loading && !data ? <div className="flex min-h-20 items-center gap-2 text-sm text-slate-500"><Loader />正在量測資料庫與備份容量…</div> : null}
+      {loading && !data ? <div className="flex min-h-20 items-center gap-2 text-sm text-slate-500"><Loader />正在讀取容量資料…</div> : null}
       {error && <p role="alert" className="mt-2 text-sm text-amber-700">容量讀取失敗。{data ? '下方為上次量測，並非即時狀態。' : '請稍後重新整理。'}</p>}
       {data && <>
+        {data.demo && <p className="mt-2 text-xs leading-5 text-slate-500">Demo 合成容量，非這台電腦的實際磁碟量測。</p>}
         <div className="mt-3 grid gap-4">
           {data.volumes.map(volume => <div key={volume.label}>
             <div className="mb-1 flex flex-wrap justify-between gap-x-3 text-xs">
@@ -79,7 +80,7 @@ export function StorageCapacityPanel({ state }: { state: ReturnType<typeof useSt
               <div key={item.label} className="min-w-0"><dt className="text-slate-500">{item.label}</dt><dd className="mt-1 font-semibold tabular-nums text-slate-800">{formatStorageBytes(item.bytes)}</dd></div>)}
           </dl>
           {data.warnings.length > 0 && <ul className="mt-3 space-y-1 text-xs text-slate-500">{data.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul>}
-        <p className="mt-2 text-xs text-slate-500">每分鐘快取量測；低於 50 GiB 或 15% 預警，20 GiB 為預設封存保護門檻。例行備份不含部署回復檔；磁碟已用空間包含其他程式與暫存庫。</p>
+        <p className="mt-2 text-xs text-slate-500">{data.demo ? '容量與歷史版本為合成展示，不會觸發備份、清理或寄信。' : '每分鐘快取量測；低於 50 GiB 或 15% 預警，20 GiB 為預設封存保護門檻。例行備份不含部署回復檔；磁碟已用空間包含其他程式與暫存庫。'}</p>
         </details>
       </>}
     </section>

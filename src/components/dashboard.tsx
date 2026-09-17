@@ -19,6 +19,7 @@ const DB_MODE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 interface MaintenanceData {
+  demo?: boolean;
   source: {
     ok: boolean;
     status:
@@ -416,7 +417,8 @@ export function DashboardClient() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3 justify-end">
-          <SystemStatusDrawer onRefresh={() => void fetchMaintenance()} loading={maintenanceLoading} incomplete={Boolean(maintenanceError || !maintenance?.source)}
+          <SystemStatusDrawer onRefresh={() => void fetchMaintenance()} loading={maintenanceLoading} demo={maintenance?.demo === true}
+            incomplete={Boolean(maintenanceError || !maintenance || (!maintenance.demo && !maintenance.source))}
             issueCount={maintenanceIssueCount(maintenance)}>
             {maintenanceLoading ? <p className="p-4 text-sm text-slate-500">載入維護狀態…</p> : maintenanceError ?
               <div role="status" className="p-4 text-sm text-slate-500">維護資訊暫時無法讀取。<button type="button" onClick={() => void fetchMaintenance()} className="ml-2 min-h-11 px-3 text-blue-700 underline">重試</button></div> : maintenance ? <MaintenanceOverview data={maintenance} /> : null}
@@ -873,6 +875,17 @@ function formatMaintenanceBytes(bytes: number): string {
 }
 
 function MaintenanceOverview({ data }: { data: MaintenanceData }) {
+  if (data.demo) return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4" aria-label="維運功能展示">
+      <h3 className="text-sm font-semibold text-slate-700">維運功能展示</h3>
+      <p className="mt-1 text-xs leading-5 text-slate-500">Demo 使用本機合成資料；以下功能刻意停用，並非連線或執行失敗。</p>
+      <dl className="mt-3 space-y-3 text-xs">
+        {[['外部系統連線', '不連外部系統'], ['資料庫備份', '不執行備份'], ['版本清理與寄信', '不執行清理或寄信']].map(([name, status]) => (
+          <div key={name} className="flex flex-wrap justify-between gap-2"><dt className="text-slate-600">{name}</dt><dd className="text-slate-700">{status}</dd></div>
+        ))}
+      </dl>
+    </section>
+  );
   const lastBackupResult = data.backup.lastAutomaticResult;
   const backupStatus = !data.backup.enabled
     ? { label: '已停用', color: 'bg-slate-100 text-slate-600' }
