@@ -9,11 +9,12 @@ import { archiveDataset, archiveGet, archiveRun, archiveWeeklyReport } from '@/l
 import { planItems, reconcile, saveSuggestion, suggestions, workOrderCommand, outsourceReport, requireLatest } from '@/lib/demo/operations';
 import { sourceDetails, updateLeadTime, usageDetail, warehouseDetail } from '@/lib/demo/details';
 import { groupSalesMeetingRows, type SalesMeetingGroupableRow } from '@/lib/mrp/sales-meeting-display';
+import { assertPostgresWebIdentity, postgresDemoEnabled, postgresWebClient, readPostgresDataset } from '@/lib/demo-postgres/web';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ path: string[] }> };
-const json = (data: unknown, status = 200) => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-MRP-Data': 'synthetic' } });
+const json = (data: unknown, status = 200, storage = 'memory') => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-MRP-Data': 'synthetic', 'X-MRP-Storage': storage } });
 
 export async function GET(request: NextRequest, context: Context) {
   try {
@@ -27,8 +28,14 @@ export async function GET(request: NextRequest, context: Context) {
     if (key === 'runs/selection') { const id = Number(params.get('runId')); const selected = runs().find((run) => run.id === id && run.status === 'completed') ?? latestRun(); return json({ run: selected, requestedRunId: id || null, fallback: id > 0 && id !== selected.id }); }
     if (key === 'runs/active') { const run = runs().find((item) => ['pending', 'syncing', 'synced', 'calculating'].includes(item.status)); return json(run ? { active: true, runId: run.id, versionCode: run.versionCode, status: run.status, run, activeRun: run } : { active: false, run: null, activeRun: null }); }
     if (key === 'runs/stream' || key === 'production-plans/stream') return demoStream(request, key === 'runs/stream' ? 'runs' : 'plans');
-    if (key === 'db-health') return json({ connected: true, healthy: true, dbMode: 'local', demo: true });
-    if (key === 'settings') return json({ dbMode: state().dbMode, urls: { local: '合成資料 A（無連線）', docker: '合成資料 B（無連線）', remote: '合成資料 C（無連線）' }, urlConfigured: { local: true, docker: true, remote: true }, connection: { connected: true, dbVersion: 'Demo・不連資料庫', error: '' } });
+    if (key === 'db-health') {
+      if (postgresDemoEnabled()) { const identity = await assertPostgresWebIdentity(await postgresWebClient()); return json({ connected: true, healthy: true, dbMode: 'local', demo: true, storage: 'postgresql', database: identity.database, dbVersion: identity.version }, 200, 'postgresql'); }
+      return json({ connected: true, healthy: true, dbMode: 'local', demo: true, storage: 'memory' });
+    }
+    if (key === 'settings') {
+      if (postgresDemoEnabled()) { const identity = await assertPostgresWebIdentity(await postgresWebClient()); return json({ dbMode: 'local', storage: 'postgresql', urls: { local: `${identity.database}（loopback／全合成資料）`, docker: '不使用', remote: '不使用' }, urlConfigured: { local: true, docker: false, remote: false }, connection: { connected: true, dbVersion: identity.version, error: '' } }, 200, 'postgresql'); }
+      return json({ dbMode: state().dbMode, storage: 'memory', urls: { local: '合成資料 A（無連線）', docker: '合成資料 B（無連線）', remote: '合成資料 C（無連線）' }, urlConfigured: { local: true, docker: true, remote: true }, connection: { connected: true, dbVersion: 'Demo・不連資料庫', error: '' } });
+    }
     if (key === 'maintenance-status') return json({ ragic: null, backup: { enabled: false, ready: false, due: false, activeRun: false, intervalHours: 24, retentionDays: 30, minimumBackups: 3, lastAutomaticResult: null, latestBackup: null }, retention: { enabled: false, activeRun: false, retentionDays: 30, minimumCompletedRuns: 30, batchSize: 10, completedRunCount: runs().length, eligibleRunCount: 0, blockedRunCount: 0, nextEligibleRunId: null, nextCoverageReadyRunId: null, archiveGate: { enabled: false, coverageReady: false, reason: 'gate-disabled' }, lastAutomaticResult: null }, demo: true });
     if (key === 'storage-status') return json({ demo: true, measuredAt: new Date().toISOString(), databaseMode: 'demo（合成容量）', database: { name: 'demo_live', bytes: 2 * 1024 ** 3 }, archive: { name: 'demo_archive', bytes: 12 * 1024 ** 3, verifiedRuns: 64 }, files: [], volumes: [{ label: '模擬資料磁碟', totalBytes: 500 * 1024 ** 3, freeBytes: 200 * 1024 ** 3, warning: false, critical: false }, { label: '模擬封存磁碟', totalBytes: 2 * 1024 ** 4, freeBytes: 1.4 * 1024 ** 4, warning: false, critical: false }], warnings: [] });
     if (key === 'settings/auto-follow') return json({ autoFollow: state().autoFollow });
@@ -39,26 +46,28 @@ export async function GET(request: NextRequest, context: Context) {
     const runId = Number(params.get('runId') ?? latestRun().id);
     if (!Number.isInteger(runId) || runId < 1) throw new DemoError('runId 無效。');
     if (archiveId && archiveRun(archiveId).sourceRunId !== runId) throw new DemoError('歷史版本身分不一致。', 409);
-    const data = archiveId ? archiveDataset(archiveId) : dataset(runId);
+    const sql = !archiveId && postgresDemoEnabled() && !['plan-management', 'production-plans', 'outsource-price-change', 'diag', 'debug-ragic'].includes(key) && path[0] !== 'production-plans';
+    const data = archiveId ? archiveDataset(archiveId) : sql ? await readPostgresDataset(runId) : dataset(runId);
+    const reportJson = (value: unknown, status = 200) => json(value, status, sql ? 'postgresql' : 'memory');
     if (data.run.status !== 'completed') throw new DemoError('版本尚未計算完成。', 409);
     if (key === 'plan-management') return json({ items: planItems(runId), total: planItems(runId).length, runId, runVersionCode: data.run.versionCode, runDate: data.run.runDate });
     if (key === 'production-plans') return json({ transfers: state().transfers.filter((row) => row.mrpRunId === runId) });
     if (path[0] === 'production-plans' && path[2] === 'work-orders') { const row = state().transfers.find((item) => item.id === Number(path[1])); if (!row) throw new DemoError('找不到合成生產計畫。', 404); return json(row); }
     if (key === 'outsource-price-change') return json(outsourceReport(params.get('month') ?? new Date().toISOString().slice(0, 7)));
-    if (key === 'fg-monthly/warehouse-stock') return json(warehouseDetail(data, params));
+    if (key === 'fg-monthly/warehouse-stock') return reportJson(warehouseDetail(data, params));
     if (key === 'fg-monthly/warehouse-stock/recheck') { const row = data.source.inventory_lots.find((item) => item.ragicRecordId === params.get('recordId')); if (!row) throw new DemoError('找不到合成庫存批號。', 404); const stock = { stockPc: row.stockPc, stockKg: row.stockKg, unitWeightG: null, expectedStockPc: row.stockPc, stockPcDiff: 0, stockPcDiffPct: 0, quantityAnomaly: false }; return json({ recordId: row.ragicRecordId, ragicUrl: `/demo-record?type=inventory_lot&id=${row.ragicRecordId}`, snapshot: stock, live: stock, ragicCorrected: false, mrpRunNeedsRefresh: false }); }
-    if (path[0] === 'fg-monthly' && ['sources', 'source-records'].includes(path[2])) return json(sourceDetails(data, path[1], params, false, path[2] === 'sources'));
-    if (path[0] === 'sales-meeting' && path[2] === 'source-records') return json(sourceDetails(data, path[1], params, true));
-    if (path[0] === 'component-weekly' && path[2] === 'usage-details') return json(usageDetail(data, path[1], params));
+    if (path[0] === 'fg-monthly' && ['sources', 'source-records'].includes(path[2])) return reportJson(sourceDetails(data, path[1], params, false, path[2] === 'sources'));
+    if (path[0] === 'sales-meeting' && path[2] === 'source-records') return reportJson(sourceDetails(data, path[1], params, true));
+    if (path[0] === 'component-weekly' && path[2] === 'usage-details') return reportJson(usageDetail(data, path[1], params));
     if (key === 'fg-material-reminders/weekly') {
       const material = params.get('material') ?? '', mrpType = params.get('mrpType') ?? 'W';
       if (archiveId) return json({ archive: archiveWeeklyReport(archiveId, new URLSearchParams({ kind: 'component', material, mrpType })), runId, archiveId, dbSource: null, material, mrpType });
-      return json({ items: data.cw.filter((row) => row.materialPartNo === material && row.mrpType === mrpType), periods: data.cwPeriods[material] ?? [], versionCode: data.run.versionCode, runId, archiveId: null, dbSource: params.get('dbSource'), material, mrpType });
+      return reportJson({ items: data.cw.filter((row) => row.materialPartNo === material && row.mrpType === mrpType), periods: data.cwPeriods[material] ?? [], versionCode: data.run.versionCode, runId, archiveId: null, dbSource: params.get('dbSource'), material, mrpType });
     }
     if (key === 'fg-material-reminders') {
       const targets: { partVersion: string; aggregated: boolean }[] = JSON.parse(params.get('targets') ?? '[]');
       if (!Array.isArray(targets) || targets.length > 50 || targets.some((target) => typeof target.partVersion !== 'string' || typeof target.aggregated !== 'boolean')) return json({ error: '材料查詢條件無效' }, 400);
-      return json({ runId, archiveId, dbSource: params.get('dbSource'), items: targets.map((target) => {
+      return reportJson({ runId, archiveId, dbSource: params.get('dbSource'), items: targets.map((target) => {
         const fg = data.fg.find((row) => row.partVersion === target.partVersion && row.isAggregated === target.aggregated);
         const members = fg?.isAggregated ? fg.aggregatedMembers as string[] : [target.partVersion];
         const jobs = data.source.work_orders.filter((row) => members.includes(String(row.partVersion))).map((row) => String(row.woNumber));
@@ -69,7 +78,7 @@ export async function GET(request: NextRequest, context: Context) {
         return { ...target, reminder: summarizeMaterialReminder(rows, rows.length > 0) };
       }) });
     }
-    if (key === 'dashboard') { const rows = data.fg.filter((item) => !item.isAggregated); const shortage = rows.filter((item) => item.shouldPlanProduction).length; return json({ dbMode: state().dbMode, latestRun: latestRun(), summary: { totalParts: rows.length, shortageParts: shortage, partsWithPlans: new Set(suggestions(runId).map((item) => item.partVersion)).size, healthPct: Math.round((rows.length - shortage) / rows.length * 100) }, recentRuns: runs() }); }
+    if (key === 'dashboard') { const rows = data.fg.filter((item) => !item.isAggregated); const shortage = rows.filter((item) => item.shouldPlanProduction).length; return reportJson({ dbMode: state().dbMode, latestRun: latestRun(), summary: { totalParts: rows.length, shortageParts: shortage, partsWithPlans: new Set(suggestions(runId).map((item) => item.partVersion)).size, healthPct: Math.round((rows.length - shortage) / rows.length * 100) }, recentRuns: runs() }); }
     if (key === 'fg-monthly/machines') return json({ machines: ['M1', 'M2', 'M3'] });
     if (key === 'filter-options/customer-codes') return json({ runId, values: ['XA', 'XB'] });
     if (['fg-monthly', 'component-weekly', 'sales-meeting', 'source-data'].includes(key)) {
@@ -83,21 +92,21 @@ export async function GET(request: NextRequest, context: Context) {
       if (params.get('merge') === 'true') items = items.map((item) => ({ ...item, dbSource: 'local' }));
       else if (params.has('dbSource')) items = items.map((item) => ({ ...item, dbSource: params.get('dbSource') }));
       const { rows, facet } = filterReportRows(items, params, reportFilterFields(key, params.get('table') ?? 'part_versions'));
-      if (facet) return json({ ...facet, merge: params.get('merge') === 'true', runId, dbSource: params.get('dbSource') });
+      if (facet) return reportJson({ ...facet, merge: params.get('merge') === 'true', runId, dbSource: params.get('dbSource') });
       const fgMap = params.get('aggregated') === 'true' ? Object.fromEntries(Object.entries(data.fgPeriods).filter(([key]) => key.endsWith(':aggregate')).map(([key, value]) => [key.slice(0, -10), value])) : data.fgPeriods;
-      if (key === 'fg-monthly' && params.get('totals') === 'true') return json({ items: [], total: rows.length, totals: params.get('merge') === 'true' ? null : fgMonthlyTotals({ ...data, fgPeriods: fgMap }, rows), runId, runVersionCode: data.run.versionCode, runDate: data.run.runDate.slice(0, 10), dbSource: params.get('dbSource'), page: 1, limit: 0 });
+      if (key === 'fg-monthly' && params.get('totals') === 'true') return reportJson({ items: [], total: rows.length, totals: params.get('merge') === 'true' ? null : fgMonthlyTotals({ ...data, fgPeriods: fgMap }, rows), runId, runVersionCode: data.run.versionCode, runDate: data.run.runDate.slice(0, 10), dbSource: params.get('dbSource'), page: 1, limit: 0 });
       const page = paginateReportRows(rows, params);
       const identity = key === 'component-weekly' ? 'materialPartNo' : 'partVersion';
       const periodMap = key === 'fg-monthly' ? fgMap : key === 'component-weekly' ? data.cwPeriods : data.salesPeriods;
-      return json({ ...page, runId, runVersionCode: data.run.versionCode, runDate: data.run.runDate.slice(0, 10), dbSource: params.get('dbSource'), sources: params.get('merge') === 'true' ? ['local', 'docker', 'remote'].map((mode) => ({ mode, runId, runVersionCode: data.run.versionCode })) : [], periods: params.get('includePeriods') === '1' ? Object.fromEntries(page.items.map((item) => [String(item[identity]), periodMap[String(item[identity])] ?? []])) : undefined, filterOptions: { customerCode: ['XA', 'XB'] }, usageWarnings: key === 'component-weekly' ? usageWarnings(data, params.get('mrpType') ?? 'W') : { count: 0, blockingCount: 0, reviewCount: 0, items: [] }, totals: null });
+      return reportJson({ ...page, runId, runVersionCode: data.run.versionCode, runDate: data.run.runDate.slice(0, 10), dbSource: params.get('dbSource'), sources: params.get('merge') === 'true' ? ['local', 'docker', 'remote'].map((mode) => ({ mode, runId, runVersionCode: data.run.versionCode })) : [], periods: params.get('includePeriods') === '1' ? Object.fromEntries(page.items.map((item) => [String(item[identity]), periodMap[String(item[identity])] ?? []])) : undefined, filterOptions: { customerCode: ['XA', 'XB'] }, usageWarnings: key === 'component-weekly' ? usageWarnings(data, params.get('mrpType') ?? 'W') : { count: 0, blockingCount: 0, reviewCount: 0, items: [] }, totals: null });
     }
     if (path.at(-1) === 'periods' && ['fg-monthly', 'component-weekly', 'sales-meeting'].includes(path[0])) {
       const map = path[0] === 'fg-monthly' ? data.fgPeriods : path[0] === 'component-weekly' ? data.cwPeriods : data.salesPeriods;
       const periods = map[path[1] + (path[0] === 'fg-monthly' && params.get('aggregated') === 'true' ? ':aggregate' : '')];
       if (!periods) throw new DemoError('找不到合成期間資料。', 404);
-      return json({ periods, suggestions: suggestions(runId, path[1]), members: data.fg.filter((item) => !item.isAggregated && item.partVersion === path[1]), runId, dbSource: params.get('dbSource') });
+      return reportJson({ periods, suggestions: suggestions(runId, path[1]), members: data.fg.filter((item) => !item.isAggregated && item.partVersion === path[1]), runId, dbSource: params.get('dbSource') });
     }
-    if (['diag', 'debug-ragic'].includes(key)) return json({ demo: true, synthetic: true, databaseConnections: 0, ragicConnections: 0, revision: state().revision, message: '僅本機合成資料，正式維運程式保留在 reference，不會執行。' });
+    if (['diag', 'debug-ragic'].includes(key)) return reportJson({ demo: true, synthetic: true, ...(sql ? { storage: 'postgresql' } : { databaseConnections: 0 }), ragicConnections: 0, revision: state().revision, message: '僅本機合成資料，正式維運程式保留在 reference，不會執行。' });
     return json({ error: `未知 Demo 介面：${key}` }, 404);
   } catch (error) { return json({ error: error instanceof Error ? error.message : '展示資料錯誤' }, error instanceof DemoError ? error.status : 400); }
 }
@@ -114,16 +123,16 @@ export async function POST(request: NextRequest, context: Context) {
     if (key === 'runs/reset') { const run = stopRun(); return json({ ok: true, run }); }
     if (path[0] === 'runs' && path[2] === 'resume') return json({ runId: startRun(Number(path[1])).id, status: 'calculating' }, 202);
     if (path[0] === 'runs' && path[2] === 'signal') { if (!['stop', 'pause', 'resume'].includes(body.action)) throw new DemoError('執行訊號無效。'); if (body.action === 'stop') stopRun(Number(path[1])); else pauseRun(Number(path[1]), body.action === 'pause'); return json({ ok: true, runId: Number(path[1]), action: body.action }); }
-    if (key === 'settings') { if (!['local', 'docker', 'remote'].includes(body.dbMode)) throw new DemoError('模式無效。'); mutate((draft) => { draft.dbMode = body.dbMode; }); return json({ ok: true, dbMode: body.dbMode, synthetic: true }); }
+    if (key === 'settings') { if (!['local', 'docker', 'remote'].includes(body.dbMode)) throw new DemoError('模式無效。'); if (postgresDemoEnabled() && body.dbMode !== 'local') throw new DemoError('PostgreSQL 展示固定使用一個專用合成庫；請重新啟動切回離線模式。', 409); mutate((draft) => { draft.dbMode = body.dbMode; }); return json({ ok: true, dbMode: body.dbMode, synthetic: true }); }
     if (key === 'outsource-price-change') return json(outsourceReport(request.nextUrl.searchParams.get('month') ?? new Date().toISOString().slice(0, 7)));
     if (path[0] === 'fg-monthly' && path[2] === 'suggestions' && path[3] === 'reconcile') return json(reconcile(path[1], body));
     if (path[0] === 'production-plans' && ['record-link', 'work-orders'].includes(path[2])) return json(workOrderCommand(Number(path[1]), path[2], body), path[2] === 'work-orders' ? 202 : 200);
     if (key === 'plan-management/batch-transfer') { requireLatest(body.runId); if (!Array.isArray(body.plans) || !body.plans.length || body.plans.length > 144) throw new DemoError('plans 無效。'); const results = body.plans.map((plan: { partVersion: string; planSequence: number }) => { try { const row = saveSuggestion(plan.partVersion, { runId: body.runId, planSequence: plan.planSequence, isTransferred: true }); return { ...plan, success: true, ragicPlanNo: row.ragicPlanNo, ragicUrl: row.ragicUrl }; } catch (error) { return { ...plan, success: false, error: error instanceof Error ? error.message : String(error) }; } }); return json({ results, succeeded: results.filter((row: { success: boolean }) => row.success).length, failed: results.filter((row: { success: boolean }) => !row.success).length }); }
     if (key.endsWith('/batch-periods')) {
-      const runId = Number(body.runId ?? latestRun().id); const data = dataset(runId);
+      const runId = Number(body.runId ?? latestRun().id); const data = postgresDemoEnabled() ? await readPostgresDataset(runId) : dataset(runId);
       const ids: string[] = body.partVersions ?? body.materialPartNos ?? body.groups?.map((group: { partVersion: string }) => group.partVersion) ?? [];
       const map = path[0] === 'fg-monthly' && body.aggregated ? Object.fromEntries(Object.entries(data.fgPeriods).filter(([key]) => key.endsWith(':aggregate')).map(([key, value]) => [key.slice(0, -10), value])) : path[0] === 'fg-monthly' ? data.fgPeriods : path[0] === 'component-weekly' ? data.cwPeriods : data.salesPeriods;
-      return json({ periods: Object.fromEntries(ids.map((id) => [id, map[id] ?? []])), runId, dbSource: body.dbSource ?? null });
+      return json({ periods: Object.fromEntries(ids.map((id) => [id, map[id] ?? []])), runId, dbSource: body.dbSource ?? null }, 200, postgresDemoEnabled() ? 'postgresql' : 'memory');
     }
     if (key === 'settings/auto-follow') { if (typeof body.autoFollow !== 'boolean') throw new DemoError('autoFollow 必須是 boolean。'); mutate((draft) => { draft.autoFollow = body.autoFollow; }); return json({ autoFollow: state().autoFollow, ok: true }); }
     return json({ error: `未知 Demo 操作：${key}` }, 404);

@@ -10,6 +10,7 @@ type DbMode = 'local' | 'docker' | 'remote';
 
 interface SettingsData {
   dbMode: DbMode;
+  storage?: 'memory' | 'postgresql';
   urls: Record<DbMode, string>;
   urlConfigured: Record<DbMode, boolean>;
   connection: {
@@ -184,11 +185,11 @@ export function SettingsClient() {
       <section className="bg-white border border-slate-200 rounded-lg">
         <div className="px-5 py-4 border-b border-slate-200">
           <h2 className="text-lg font-semibold text-slate-800">資料庫連線</h2>
-          <p className="text-xs text-slate-500 mt-0.5">選擇 PostgreSQL 連線方式</p>
+          <p className="text-xs text-slate-500 mt-0.5">{settings?.storage === 'postgresql' ? 'PostgreSQL 合成展示：報表與原始資料實際讀取 SQL；規劃操作仍存於本機。' : '選擇離線合成資料來源'}</p>
         </div>
 
         <div className="p-5 space-y-3">
-          {DB_OPTIONS.map((opt) => {
+          {DB_OPTIONS.filter(opt => settings?.storage !== 'postgresql' || opt.value === 'local').map((opt) => {
             const isActive = settings?.dbMode === opt.value;
             const isConfigured = settings?.urlConfigured[opt.value] ?? false;
             const maskedUrl = settings?.urls[opt.value] || '';
@@ -218,12 +219,12 @@ export function SettingsClient() {
                     </div>
                     <div>
                       <div className="font-medium text-slate-800 text-sm">
-                        {opt.label}
+                        {settings?.storage === 'postgresql' ? 'PostgreSQL 合成資料' : opt.label}
                         {isActive && (
                           <span className="ml-2 text-xs text-blue-600 font-normal">使用中</span>
                         )}
                       </div>
-                      <div className="text-xs text-slate-500">{opt.description}</div>
+                      <div className="text-xs text-slate-500">{settings?.storage === 'postgresql' ? '專用 loopback 展示庫，不連公司資料庫或 Ragic' : opt.description}</div>
                     </div>
                   </div>
                   {!isConfigured && (
@@ -244,7 +245,7 @@ export function SettingsClient() {
       </section>
 
       {/* 資料合併 */}
-      <section className="mt-4 bg-white border border-slate-200 rounded-lg">
+      {settings?.storage !== 'postgresql' && <section className="mt-4 bg-white border border-slate-200 rounded-lg">
         <div className="px-5 py-4 border-b border-slate-200">
           <h2 className="text-lg font-semibold text-slate-800">資料合併</h2>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -254,7 +255,7 @@ export function SettingsClient() {
         <div className="p-5">
           <MergeToggle enabled={mergeDb} onChange={setMergeDb} />
         </div>
-      </section>
+      </section>}
 
       {/* Connection Status */}
       {settings?.connection && (
@@ -348,13 +349,11 @@ export function SettingsClient() {
         </div>
         <div className="p-5">
           <p className="text-xs text-slate-500 mb-3">
-            Demo 不需要 .env；三個來源皆使用本機合成資料，不連接資料庫、Docker 或雲端服務。
+            {settings?.storage === 'postgresql' ? '目前使用專用 PostgreSQL 合成庫；歷史資料、規劃、轉單及維運仍為本機展示，不連公司或雲端服務。停止後清除專用連線變數，再用 npm start 切回免資料庫模式。' : 'Demo 不需要 .env；三個來源皆使用本機合成資料，不連接資料庫、Docker 或雲端服務。'}
           </p>
           <div className="text-xs font-mono text-slate-600 bg-slate-50 p-3 rounded space-y-1">
-            <div>DB_MODE={settings?.dbMode || 'local'}</div>
-            <div>DATABASE_URL_LOCAL=postgresql://...</div>
-            <div>DATABASE_URL_DOCKER=postgresql://...</div>
-            <div>DATABASE_URL_REMOTE=postgresql://...</div>
+            <div>DEMO_STORAGE={settings?.storage || 'memory'}</div>
+            {settings?.storage === 'postgresql' ? <div>MRP_DEMO_POSTGRES_URL=專用 loopback 合成庫（不顯示帳密）</div> : <div>啟動方式：npm start（免資料庫）</div>}
           </div>
         </div>
       </section>

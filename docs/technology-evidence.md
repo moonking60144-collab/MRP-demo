@@ -19,6 +19,16 @@
 一般 Windows 展示仍使用合成記憶體資料與本機 JSON 狀態。依 README 準備後雙擊 `Start-Demo.cmd`，不需要 PostgreSQL 或 Docker。
 離線計算使用 Prisma 模型資訊及相容的記憶體存取介面；不是實際 SQL 查詢，不能拿離線成功當成資料庫驗證。
 
+## 可選網站 SQL 讀取
+
+`npm run start:postgres:local` 或 `npm run start:postgres` 保留同一套畫面，讓完成版報表與原始資料透過 `src/lib/demo-postgres/web.ts` 讀取真正 PostgreSQL。Windows 手動準備方式見 README。
+專用庫是 `mrp_demo_prisma_demo`，與 `test:postgres` 的庫、公司的 DB 都不同；啟動前驗證身份／用途，只在空白庫建立 schema。網站入口不執行 DDL。
+計算快照仍來自原本合成引擎；首次報表讀取以同一交易存入 SQL，Run 身份／快照摘要與輸入／輸出同時提交。重複讀取核對快照，不清空或覆寫其他 Run；SQL 不可用就報錯，不以記憶體冒充。
+`npm run test:postgres:web` 走原 API forwarding 入口，故意修改測試 SQL 庫存值，確認 API 跟隨 SQL 而本機快照未變；另檢查 concurrent 首次匯入、Run 範圍、唯一約束引起的跨表回滾、用途不符與 DB 失敗。產物是 `release/postgres-web.json`。
+此模式不宣稱規劃操作、MRP 網站計算或 Archive 已換成 SQL；既有獨立 `test:postgres` 仍用真正 DB 執行原 MRP 引擎。Demo 篩選／排序／分頁仍在讀回 SQL 資料後處理。
+SQL Decimal 在網站報表 DTO 轉為 number，維持既有 Demo 的數值／千分位顯示契約；資料庫本身仍以原 Prisma Decimal 欄位保存。此轉換只針對合成展示數量，不宣稱任意金融精度的無損表示。
+build 後可執行 `npm run test:postgres:smoke`（macOS／Linux），真正透過 npm 啟動 production 網站、檢查四組 SQL API，再發出重複 SIGINT，驗證 HTTP／PG port 及本次臨時目錄全部清理。失敗時保留錯誤紀錄並嘗試停止自己擁有的 PG；不碰系統服務。
+
 ## 真正 Prisma／PostgreSQL 驗證
 
 有 PostgreSQL 命令列工具的 macOS／Linux，可執行：

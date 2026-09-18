@@ -11,6 +11,7 @@
 - 所有 `/api/*` 的可執行入口固定轉送本機 `demo-api`；原 handler 保存在 `reference/production-api`，不是可發布路由。
 - 真實 Prisma client 與 Archive PostgreSQL reader 禁止使用。
 - 上述限制適用展示網站；獨立 `test:postgres` CLI 只接受用途受限的本機合成測試庫，不對網站開放真實 DB 存取。
+- 可選 `start:postgres` 報表模式例外：只允許另一個專用 loopback 合成庫 `mrp_demo_prisma_demo`，用途標記必須相符，不解除公司的 DB／Ragic 隔離。
 - 不啟動原有 Ragic 探測、備份、保留、轉單及工令背景工作。
 - Ragic 原單連結改成本機合成紀錄；不帶公司的金鑰、帳密或 session。
 - 原版成品月推、元件週推與產銷計算引擎實際讀取合成輸入、產生記憶體輸出；不以動畫代替計算。
@@ -32,6 +33,28 @@ npm run build
 不能把 Mac 的 `node_modules` 或 `.next` 搬到 Windows；必須在目標 Windows 進行初次安裝/建置。
 腳本與 Node launcher 使用自身路徑定位，不依賴終端機所在資料夾。
 目前驗收環境為 macOS + Node.js 24 + Chromium；沒有把它當作 Windows 真機驗收。
+
+## 可選 PostgreSQL 報表展示
+
+一般展示仍使用 `npm start`，不需要 PostgreSQL。若本機已安裝 PostgreSQL 命令列工具，可在 build 完成後執行：
+
+```bash
+npm run start:postgres:local
+```
+
+它建立獨立臨時 cluster 與專用展示庫，啟動同一套畫面；Ctrl+C 停止網站後關閉並清除自己建立的 cluster，不動系統服務。local 自動建立入口用於 macOS／Linux。
+Windows 可自行建立新的空白 `mrp_demo_prisma_demo`，owner／使用者必須是 `mrp_demo_test`，然後：
+
+```powershell
+$env:MRP_DEMO_POSTGRES_URL = 'postgresql://mrp_demo_test:你的展示庫密碼@127.0.0.1:5432/mrp_demo_prisma_demo'
+npm run start:postgres
+```
+
+此模式的成品月推、元件週推、產銷、原始資料與報表明細真正透過 Prisma 讀取 SQL。設定頁顯示實際 PG 版本，資料回應帶有 `X-MRP-Storage: postgresql`。
+完成的合成計算快照首次讀取時以同一交易存入展示 DB；後續讀取 SQL，不在 DB 失敗時偷偷改回記憶體。既有 Run 快照不同就拒絕覆寫。首次只在空白庫建立 schema；已有資料而用途標記不符就拒絕。
+計算、規劃／轉單狀態仍使用本機合成流程；下一版完成快照才納入報表 SQL。歷史、容量、備份、寄信仍是模擬，不是 PostgreSQL Archive。搜尋／排序／分頁在 Demo API 讀回資料後處理，不宣稱 SQL 分頁或正式站效能優化。
+三來源標記／合併在此模式不代表三個真實資料庫，均使用同一專用合成庫。停止後清除專用連線變數，再以 `npm start` 切回離線模式。
+`npm run test:postgres:web` 使用自己的臨時 PG，驗證實際 API 的 SQL 值、Run 隔離、交易回滾、用途拒絕及 DB 失敗不回退。此入口沒有新增 CI workflow 或正式維運排程。
 
 ## 建議展示順序
 

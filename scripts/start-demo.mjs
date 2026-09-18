@@ -16,6 +16,10 @@ mkdirSync(join(standalone, '.next'), { recursive: true });
 cpSync(join(root, '.next', 'static'), join(standalone, '.next', 'static'), { recursive: true });
 if (existsSync(join(root, 'public'))) cpSync(join(root, 'public'), join(standalone, 'public'), { recursive: true });
 const child = spawn(process.execPath, [server], { cwd: standalone, stdio: 'inherit', env: { ...process.env, HOSTNAME: '127.0.0.1', PORT: String(port) } });
-for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => child.kill(signal));
+let shutdownTimer;
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
+  child.kill(signal);
+  if (!shutdownTimer) shutdownTimer = setTimeout(() => child.kill('SIGKILL'), 8000);
+});
 child.once('error', (error) => { console.error(error); process.exitCode = 1; });
-child.once('exit', (code) => { process.exitCode = code ?? 1; });
+child.once('exit', (code) => { clearTimeout(shutdownTimer); process.exitCode = code ?? 1; });
