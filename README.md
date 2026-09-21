@@ -1,101 +1,72 @@
-# MRP Demo 2.1.38
+# MRP Demo
 
-沿用既有 MRP 程式、頁面與進階表格操作的 Demo 展示版；所有 runtime 資料改用合成資料。
-此專案不是重新開發的介面，也不是公司資料庫的複本。
+將訂單、預示量、庫存、工令、BOM 與採購資料，整合成可追溯、可版本化的生產與物料需求規劃系統。
 
-技術展示與實測入口：[技術證據說明](docs/technology-evidence.md)。一般展示免資料庫；另有真正的 Prisma／PostgreSQL 驗證，不用把公司環境帶入 Demo。
+這個 Demo 保留原有 MRP 計算引擎、報表與主要操作流程，所有資料均為合成資料，不需要公司資料庫或 Source 帳號。目前同步版本：**2.1.38**。
 
-## 隔離邊界
+![MRP Demo 儀表板與版本化執行紀錄](docs/images/demo-overview.jpg)
 
-- 不帶入 `.env`、真實資料、備份、Git 歷史或公司的部署腳本。
-- 所有 `/api/*` 的可執行入口固定轉送本機 `demo-api`；原 handler 保存在 `reference/production-api`，不是可發布路由。
-- 真實 Prisma client 與 Archive PostgreSQL reader 禁止使用。
-- 上述限制適用展示網站；獨立 `test:postgres` CLI 只接受用途受限的本機合成測試庫，不對網站開放真實 DB 存取。
-- 可選 `start:postgres` 報表模式例外：只允許另一個專用 loopback 合成庫 `mrp_demo_prisma_demo`，用途標記必須相符，不解除公司的 DB／Source 隔離。
-- 不啟動原有 Source 探測、備份、保留、轉單及工令背景工作。
-- Source 原單連結改成本機合成紀錄；不帶公司的金鑰、帳密或 session。
-- 原版成品月推、元件週推與產銷計算引擎實際讀取合成輸入、產生記憶體輸出；不以動畫代替計算。
-- 儲存建議、轉單、對帳、工令產生與採購前置週數都只修改本機合成狀態。工令/BOM 會納入下一次 MRP。
-- 所有歷史資料 GET-only；舊即時版本不可寫入規劃或主檔。MRP 計算中不可更新規劃/主檔。
+## 為什麼需要 MRP？
 
-## Windows 展示
+生產規劃必須同時判斷現有庫存是否足夠、何時會缺貨、需要生產或採購多少，以及結果來自哪一版資料。當訂單、預示、工令、BOM、庫存與採購分散在不同來源時，人工比對不只耗時，也難以處理共享庫存、領退料與歷史追溯。
 
-目標為 Windows 10/11 + Node.js 24 LTS；不要求 PostgreSQL、Docker 或公司 API。
-從此儲存庫下載 ZIP 或 clone。請在展示前、使用 Windows 電腦且能連網時準備一次：
+本系統把來源資料固定在一個版本化的 **MRP Run**，再產生成品月推、元件週推、產銷分析與生產建議，讓每個結果都能回到同一版輸入查證。
 
-```powershell
-npm ci
-npm run build
-```
+## 可以展示什麼？
 
-之後雙擊 `Start-Demo.cmd`，或執行 `npm start`，開啟 `http://127.0.0.1:3000`。
-保持終端機開著，Ctrl+C 停止。準備完成後，展示不需要網路或公司帳號。
-不能把 Mac 的 `node_modules` 或 `.next` 搬到 Windows；必須在目標 Windows 進行初次安裝/建置。
-腳本與 Node launcher 使用自身路徑定位，不依賴終端機所在資料夾。
-目前驗收環境為 macOS + Node.js 24 + Chromium；沒有把它當作 Windows 真機驗收。
+- 執行、暫停、停止、續算及切換 MRP Run。
+- 成品月推：庫存、訂單、預示、生產計畫、第一製程與首站預設來源。
+- 元件週推：材料缺口、採購前置期、領料、耗用與退料。
+- 開單規劃、轉單、對帳與工令／BOM 回饋下一版 MRP。
+- 唯讀歷史版本、來源追溯，以及寬表的列／欄雙軸虛擬化。
 
-## 可選 PostgreSQL 報表展示
+## 最快開啟
 
-一般展示仍使用 `npm start`，不需要 PostgreSQL。若本機已安裝 PostgreSQL 命令列工具，可在 build 完成後執行：
+需要 [Node.js 24 LTS](https://nodejs.org/)；不需要 PostgreSQL、Docker、`.env` 或公司帳號。
+
+**Windows：**下載或 clone 後直接雙擊 `Start-Demo.cmd`。首次執行會自動安裝、建置並開啟瀏覽器；之後可直接啟動。
+
+**macOS／Linux：**
 
 ```bash
-npm run start:postgres:local
-```
-
-它建立獨立臨時 cluster 與專用展示庫，啟動同一套畫面；Ctrl+C 停止網站後關閉並清除自己建立的 cluster，不動系統服務。local 自動建立入口用於 macOS／Linux。
-Windows 可自行建立新的空白 `mrp_demo_prisma_demo`，owner／使用者必須是 `mrp_demo_test`，然後：
-
-```powershell
-$env:MRP_DEMO_POSTGRES_URL = 'postgresql://mrp_demo_test:你的展示庫密碼@127.0.0.1:5432/mrp_demo_prisma_demo'
-npm run start:postgres
-```
-
-此模式的成品月推、元件週推、產銷、原始資料與報表明細真正透過 Prisma 讀取 SQL。設定頁顯示實際 PG 版本，資料回應帶有 `X-MRP-Storage: postgresql`。
-完成的合成計算快照首次讀取時以同一交易存入展示 DB；後續讀取 SQL，不在 DB 失敗時偷偷改回記憶體。既有 Run 快照不同就拒絕覆寫。首次只在空白庫建立 schema；已有資料而用途標記不符就拒絕。
-計算、規劃／轉單狀態仍使用本機合成流程；下一版完成快照才納入報表 SQL。歷史、容量、備份、寄信仍是模擬，不是 PostgreSQL Archive。搜尋／排序／分頁在 Demo API 讀回資料後處理，不宣稱 SQL 分頁或正式站效能優化。
-三來源標記／合併在此模式不代表三個真實資料庫，均使用同一專用合成庫。停止後清除專用連線變數，再以 `npm start` 切回離線模式。
-`npm run test:postgres:web` 使用自己的臨時 PG，驗證實際 API 的 SQL 值、Run 隔離、交易回滾、用途拒絕及 DB 失敗不回退。此入口沒有新增 CI workflow 或正式維運排程。
-
-## 建議展示順序
-
-1. 儀表板執行 MRP：原引擎計算、執行紀錄、暫停/停止/續算、版本選取。
-2. 成品月推：搜尋 `PRODUCT-001`，查看第一製程、首站預設來源與完工 ERP，以及共享 ERP 庫存、訂單與預示整合、同 ERP 整合、製程樹與來源明細。傳統表格會同時虛擬化大量列與月份欄位。
-3. 元件週推：`DEMO-W-001` 有早期缺料與較晚到貨；`DEMO-W-002` 有領料來源未知；`DEMO-W-003` 前置期未設定。
-   `DEMO-B-003` 可看部分領料與在製保留；`DEMO-D-004` 為全數耗用；`DEMO-B-005` 有耗用後正式退料 300pc 與可用退料批號。庫存批號、交易明細與來源連結使用同一 Run 的合成資料。
-4. 產銷會議：點選訂單需求、生產計畫及剩餘庫存，說明「無計畫供需差」與週期含計畫餘額的差異。
-5. 開單規劃與相關生產計劃：儲存/轉單/對帳、失敗與待確認範例、產生工令，再算一版查看工令/BOM。
-6. 儀表板的歷史資料庫：64 個合成版本，搜尋、跳頁，選取後沿用左側報表，以唯讀模式檢視。
-7. 表格操作：欄位與大列顯示、篩選/排序、個人預設、框選合計、Excel/CSV、sticky、快速切頁，以及寬表快速橫向捲動。
-
-## 本機狀態與容量
-
-production 啟動的合成状态位於 `.next/standalone/demo-data/state.json`；dev 位於根目錄 `demo-data/state.json`。
-單一 demo process 使用原子檔案發布；不支援多 process/多主機共享此檔案。
-最多保留 30 個即時版本，歷史展示固定 64 版，個人表格預設使用瀏覽器 localStorage。
-先停止 server，執行 `npm run demo:reset` 並輸入 `RESET`，會將合成状态移為可恢復備存，下一次啟動重新產生。
-重建 `.next` 前若想保留操作結果，先備存其中的合成狀態。
-容量、備份與 retention 面板展示維運概念；不會執行公司資料清理、Windows 排程或寄信。
-系統狀態明確標示「Demo 模擬狀態」；真實的本機 API 讀取失敗仍會顯示錯誤，不會被 Demo 標記隱藏。
-更新展示案例後，既有已保存 Run 不會被改寫；請執行一版新的 MRP 查看新增的批號／耗用／退料案例。
-
-## 驗證與依賴限制
-
-`npm test` 驗證 demo API/lifecycle 與保留的原版純計算契約；不代表公司 DB/Source integration tests 已在 demo 執行。
-`npm run lint` 與 `npm run build` 可獨立執行。
-`npm run test:postgres:local` 使用已安裝的 PostgreSQL 工具建立一次性測試庫，實測原引擎的 Prisma 讀寫、結果對帳、交易回滾與 Run 隔離。一般展示不必執行它。
-GitHub Actions 分別執行 Linux／Windows 離線 build 與 HTTP smoke，以及 Linux PostgreSQL 17 整合驗證；是否成功需核對對應 commit 的遠端執行紀錄。
-2026-09-17 相容範圍依賴修補後，`npm audit` 仍有 10 項（7 high、2 moderate、1 low，沒有 critical）。
-保留框架 major version，未使用 `npm audit fix --force`。Prisma config/工具鏈、停用的 SMTP 與 XLSX 等有未清除警告。
-本版只供本機 Demo 展示，不應直接公開部署成 production 服務。
-XLSX 用於匯出，不提供讀入任意 Excel 檔案的入口；[SheetJS advisory](https://github.com/advisories/GHSA-4r6h-8v6p-xvw6) 說明匯出情境不受該 prototype-pollution 讀檔漏洞影響，這不等於整個 dependency 無風險。
-
-## 開發
-
-```powershell
 npm ci
 npm run build
 npm start
 ```
 
-開發模式為 `npm run dev`。不需要也不應建立 `.env`。
-本機 Git 認證與作者可針對此儲存庫單獨設定，不需要切換全域帳號；金鑰與憑證不放進專案。
+開啟 <http://127.0.0.1:3000>。完整準備、重設與展示案例請看 [Demo 操作指南](docs/demo-guide.md)。
+
+## 3 分鐘展示流程
+
+| 步驟 | 操作 | 重點 |
+| --- | --- | --- |
+| 1 | 儀表板執行一次 MRP | 版本化 Run、進度與執行生命週期 |
+| 2 | 成品月推搜尋 `PRODUCT-001` | 月度供需、共享 ERP 庫存、第一製程與首站來源 |
+| 3 | 點選「材料缺口」 | 從成品追到來源工令、BOM、剩餘用量與缺料週 |
+| 4 | 元件週推搜尋 `DEMO-W-001` | 材料缺口與較晚到貨的採購單 |
+| 5 | 儀表板切到「歷史資料庫」 | 固定版本、唯讀查詢與舊資料缺欄位處理 |
+
+![成品月推、第一製程與關聯材料追溯](docs/images/fg-material-detail.jpg)
+
+成品月推可直接展開同一 Run 的關聯材料，查看來源工令、尚需用量與首次缺料週。
+
+![MRP Demo 唯讀歷史版本](docs/images/archive-browser.jpg)
+
+歷史畫面只讀取當時快照，不用目前主檔補寫舊結果。
+
+## 技術重點
+
+- Next.js 15、React 19、TypeScript、Prisma 6、PostgreSQL。
+- 版本化計算輸入、同 ERP 共享庫存與可重播的月／週推算。
+- 來源身分與 `unknown` 語意：證據不足時不製造成功狀態。
+- 大型寬表的雙軸虛擬化、固定欄、篩選、排序、框選與匯出。
+- Linux／Windows CI、HTTP smoke，以及獨立的真實 PostgreSQL contract tests。
+
+## Demo 邊界
+
+- 不包含公司資料、`.env`、備份、帳密、session 或正式部署腳本。
+- 不連正式 PostgreSQL、Source、SMTP 或公司內部服務。
+- 所有寫入只改變本機合成狀態；歷史版本維持唯讀。
+- 這是本機面試 Demo，不應直接當成公開 production 服務。
+
+深入資料流、隔離方式與可驗證範圍請看 [技術展示與驗證](docs/technology-evidence.md)；CI 狀態請核對對應 commit 的 [GitHub Actions](https://github.com/moonking60144-collab/MRP-demo/actions)。
