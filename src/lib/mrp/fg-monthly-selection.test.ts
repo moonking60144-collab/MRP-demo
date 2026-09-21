@@ -39,6 +39,20 @@ test('重複框選同一列範圍只輸出一個 selector', () => {
   assert.match(css, /nth-child\(n\+5\).*nth-child\(-n\+9\)/);
 });
 
+test('水平虛擬化用 canonical data-selc，不以含 colSpan 的 DOM 子格位置判斷選取', () => {
+  const css = buildSelectionRangeCss({ rects: [{ minR: 0, maxR: 2, minC: 1, maxC: 40 }],
+    tableSelector: '.fg-monthly-trad-table', firstSelectableChildIndex: 4, columnIndices: [0, 1, 2, 39, 40, 41],
+  });
+  assert.match(css, /data-selr="0"/);
+  assert.match(css, /data-selr="2"/);
+  for (const column of [1, 2, 39, 40]) assert.match(css, new RegExp(`data-selc="${column}"`));
+  for (const column of [0, 3, 41]) assert.doesNotMatch(css, new RegExp(`data-selc="${column}"`));
+  assert.doesNotMatch(css, /nth-child/);
+  assert.equal(buildSelectionRangeCss({ rects: [{ minR: 0, maxR: 0, minC: 10, maxC: 20 }],
+    tableSelector: '.table', firstSelectableChildIndex: 1, columnIndices: [0, 30],
+  }), '');
+});
+
 test('框選 numeric pre-period 欄（如備庫期數）要加總，不該是 0', () => {
   const stats = computeSelectionStats({
     rects: [{ minR: 0, maxR: 2, minC: 0, maxC: 0 }],

@@ -2,7 +2,8 @@
 
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { updateVirtualTableWindow } from './virtual-table-rows';
+import { updateVirtualTableWindow, type VirtualTableWindow } from './virtual-table-rows';
+import { computeBufferedAxisWindow, directionalVirtualBuffer, resolveBufferedAxisWindow } from './virtual-table-axis';
 
 export interface VirtualTableGroup {
   key: string;
@@ -46,38 +47,64 @@ export function resolveBufferedGroupWindow(
   return updateVirtualTableWindow(current, computeVirtualGroupWindow(heights, top, height, overscan));
 }
 
-export function useVirtualTableGroups({ groups, zoom, geometryKey, resetKey, overscan = 1 }: {
+export function useVirtualTableGroups({ groups, zoom, geometryKey, resetKey, overscan = 1, columns }: {
   groups: VirtualTableGroup[];
   zoom: number;
   geometryKey: string;
   resetKey: string;
   overscan?: number;
+  columns?: { widths: number[]; offset: number; frozenWidth: number };
 }) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [measurements, setMeasurements] = useState<Map<string, number>>(() => new Map());
   const frame = useRef<number | null>(null);
   const keys = useMemo(() => groups.map(group => `${geometryKey}:${group.key}:${group.estimatedHeight}`), [geometryKey, groups]);
   const heights = useMemo(() => groups.map((group, index) => measurements.get(keys[index]) ?? group.estimatedHeight * zoom), [groups, keys, measurements, zoom]);
-  const geometry = useRef({ heights, overscan });
-  const viewportSize = useRef({ headerHeight: 0, height: 600 });
+  const columnWidths = useMemo(() => columns?.widths.map(width => width * zoom) ?? [], [columns, zoom]);
+  const geometry = useRef({ heights, overscan, zoom, columns, columnWidths });
+  const viewportSize = useRef({ height: 600 });
+  const motion = useRef({ top: 0, left: 0, time: 0, deltaTop: 0, deltaLeft: 0, elapsed: 160 });
   const [window, setWindow] = useState(() => computeVirtualGroupWindow(heights, 0, 600, overscan));
   const renderedWindow = useRef(window);
+  const [columnWindow, setColumnWindow] = useState<VirtualTableWindow | null>(null);
+  const renderedColumns = useRef(columnWindow);
 
   useLayoutEffect(() => { renderedWindow.current = window; }, [window]);
+  useLayoutEffect(() => { renderedColumns.current = columnWindow; }, [columnWindow]);
+
+  const columnViewport = useCallback(() => {
+    const config = geometry.current;
+    if (!container || !config.columns) return { left: 0, width: 0 };
+    const right = Math.max(0, container.scrollLeft + container.clientWidth - config.columns.offset * config.zoom);
+    const left = Math.max(0, Math.min(right, container.scrollLeft + (config.columns.frozenWidth - config.columns.offset) * config.zoom));
+    return { left, width: right - left };
+  }, [container]);
 
   const measureViewport = useCallback(() => {
     if (!container) return;
     const headerHeight = container.querySelector('thead')?.getBoundingClientRect().height ?? 0;
-    const top = Math.max(0, container.scrollTop - headerHeight);
-    const height = container.clientHeight || 600;
-    viewportSize.current = { headerHeight, height };
-    setWindow(previous => resolveBufferedGroupWindow(previous, geometry.current.heights, top, height, geometry.current.overscan));
-  }, [container]);
+    const footerHeight = container.querySelector('tfoot')?.getBoundingClientRect().height ?? 0;
+    const top = container.scrollTop;
+    const height = Math.max(1, (container.clientHeight || 600) - headerHeight - footerHeight);
+    viewportSize.current = { height };
+    const config = geometry.current;
+    const recent = performance.now() - motion.current.time < 160;
+    const base = config.overscan * 24 * config.zoom;
+    const verticalBuffer = directionalVirtualBuffer(recent ? motion.current.deltaTop : 0, motion.current.elapsed, base, Math.max(base, 480 * config.zoom));
+    setWindow(previous => resolveBufferedAxisWindow(previous, config.heights, top, height, verticalBuffer));
+    if (config.columns) {
+      const viewport = columnViewport();
+      const buffer = directionalVirtualBuffer(recent ? motion.current.deltaLeft : 0, motion.current.elapsed, 240 * config.zoom, 720 * config.zoom);
+      setColumnWindow(previous => previous
+        ? resolveBufferedAxisWindow(previous, config.columnWidths, viewport.left, viewport.width, buffer)
+        : computeBufferedAxisWindow(config.columnWidths, viewport.left, viewport.width, buffer));
+    }
+  }, [columnViewport, container]);
 
   useLayoutEffect(() => {
-    geometry.current = { heights, overscan };
+    geometry.current = { heights, overscan, zoom, columns, columnWidths };
     measureViewport();
-  }, [heights, overscan, measureViewport]);
+  }, [heights, overscan, zoom, columns, columnWidths, measureViewport]);
 
   useLayoutEffect(() => {
     measureViewport();
@@ -98,7 +125,7 @@ export function useVirtualTableGroups({ groups, zoom, geometryKey, resetKey, ove
         let changed = next.size !== previous.size;
         for (const [index, height] of sizes) {
           if (height <= 0 || !keys[index]) continue;
-          if (Math.abs((next.get(keys[index]) ?? 0) - height) > 0.5) {
+          if (Math.abs((next.get(keys[index]) ?? geometry.current.heights[index]) - height) > 0.5) {
             next.set(keys[index], height);
             changed = true;
           }
@@ -123,9 +150,18 @@ export function useVirtualTableGroups({ groups, zoom, geometryKey, resetKey, ove
 
   const onScroll = useCallback(() => {
     if (!container) return;
-    const top = Math.max(0, container.scrollTop - viewportSize.current.headerHeight);
+    const top = container.scrollTop;
+    const left = container.scrollLeft;
+    if (top === motion.current.top && left === motion.current.left) return;
+    const time = performance.now();
+    motion.current = { top, left, time, deltaTop: top - motion.current.top, deltaLeft: left - motion.current.left,
+      elapsed: Math.max(8, time - motion.current.time) };
     const totalHeight = geometry.current.heights.reduce((sum, height) => sum + height, 0);
-    if (!isVirtualGroupViewportCovered(renderedWindow.current, totalHeight, top, viewportSize.current.height)) {
+    const horizontal = columnViewport();
+    const totalWidth = geometry.current.columnWidths.reduce((sum, width) => sum + width, 0);
+    const columnsCovered = !geometry.current.columns || !renderedColumns.current || horizontal.width === 0
+      || isVirtualGroupViewportCovered(renderedColumns.current, totalWidth, horizontal.left, horizontal.width);
+    if (!columnsCovered || !isVirtualGroupViewportCovered(renderedWindow.current, totalHeight, top, viewportSize.current.height)) {
       if (frame.current !== null) cancelAnimationFrame(frame.current);
       frame.current = null;
       // A large scroll has exhausted overscan; do not paint spacers while waiting another frame.
@@ -137,7 +173,7 @@ export function useVirtualTableGroups({ groups, zoom, geometryKey, resetKey, ove
       frame.current = null;
       measureViewport();
     });
-  }, [container, measureViewport]);
+  }, [columnViewport, container, measureViewport]);
 
-  return { ...window, containerRef: setContainer, onScroll };
+  return { ...window, columnWindow, containerRef: setContainer, onScroll };
 }

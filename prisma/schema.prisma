@@ -113,6 +113,9 @@ model StagingInventory {
   unit              String?
   purchaseLeadWeeks Decimal  @default(0)
   purchaseLeadWeeksConfigured Boolean?
+  firstProcess String?
+  firstProcessErpPartNo String?
+  firstProcessSourceType String?
 
   @@index([mrpRunId, erpPartNo])
   @@schema("demo")
@@ -298,6 +301,8 @@ model FgMonthly {
   erpPartNo                 String?
   forgingMachine            String?
   firstProcess              String?
+  firstProcessErpPartNo      String?
+  firstProcessSourceType     String?
   surfaceTreatment          String?
   forgingParent             String?
   processBomVersion         String?

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, Fragment, memo } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, Fragment, memo, Children, createContext, useContext } from 'react';
 import type { ColumnVisibilityState, ColumnFilter, MrpColumnDef, SortField } from './data-table/types';
 import { Loader } from './ui/loader';
 import { MaterialReminderButton } from './fg-material-reminder';
@@ -70,6 +70,7 @@ import {
 } from './ui/virtual-table-rows';
 import { useVirtualTableGroups } from './ui/virtual-table-groups';
 import { buildFgRowGroups } from '@/lib/mrp/fg-row-groups';
+import { virtualSectionWindow } from './ui/virtual-table-axis';
 import { useRafCellFocus } from './ui/use-raf-cell-focus';
 import { FloatingSelectionSummary } from './ui/floating-selection-summary';
 
@@ -111,6 +112,22 @@ function numCell(val: number | null | undefined, negative?: boolean) {
   );
 }
 
+function VirtualColumnSpacer({ count }: { count: number }) {
+  return count > 0 ? <td colSpan={count} data-virtual-column-spacer data-no-selection aria-hidden="true" className="border-0 p-0" /> : null;
+}
+
+const VirtualTimelineWindows = createContext<ReturnType<typeof virtualSectionWindow>[]>([]);
+
+function VirtualTimelineSection({ index, children }: { index: number; children: React.ReactNode }) {
+  const window = useContext(VirtualTimelineWindows)[index];
+  const cells = useMemo(() => Children.toArray(children), [children]);
+  return useMemo(() => <>
+    <VirtualColumnSpacer count={window.before} />
+    {cells.slice(window.start, window.end)}
+    <VirtualColumnSpacer count={window.after} />
+  </>, [cells, window.after, window.before, window.end, window.start]);
+}
+
 type FgMonthlyPeriodSourceMetric = Extract<FgMonthlySourceMetric, keyof PeriodDetail>;
 
 function isSourceMetric(value: keyof PeriodDetail): value is FgMonthlyPeriodSourceMetric {
@@ -138,6 +155,8 @@ export interface FgMonthlyItem {
   usesSharedErpPool: boolean;
   forgingMachine: string | null;
   firstProcess: string | null;
+  firstProcessErpPartNo?: string | null;
+  firstProcessSourceType?: string | null;
   surfaceTreatment: string | null;
   forgingParent: string | null;
   processBomVersion: string | null;
@@ -582,7 +601,8 @@ export function TraditionalView({
     const cols: Array<FgTradCol & {
       group: 'frozen' | 'status' | 'static' | 'wo';
     }> = [];
-    const w = (c: { key: string; width: number }) => stableWidths[c.key] ?? c.width;
+    const w = (c: { key: string; width: number }) =>
+      c.key === 'firstProcess' || c.key === 'firstProcessSourceType' ? c.width : stableWidths[c.key] ?? c.width;
     for (const c of FROZEN_COLS) if (isVisible(c.key)) cols.push({ ...c, width: w(c), group: 'frozen' });
     // Status 群組緊接 Part Info 之後（對齊 Source d4/22 版面）
     for (const c of STATUS_COLS) if (isVisible(c.key)) cols.push({ ...c, width: w(c), group: 'status' });
@@ -771,6 +791,41 @@ export function TraditionalView({
     () => tableColumnWidths.reduce((total, width) => total + width, 0),
     [tableColumnWidths],
   );
+  const tableZoom = TEXT_ZOOM_LEVELS[textSize] || 1;
+  const rowGroups = useMemo(() => buildFgRowGroups(items, {
+    showTree: Boolean(showTree && treeData && treeColW > 0),
+    aggregated,
+    expanded: expandedAggGroups,
+    memberCounts: Object.fromEntries(Object.entries(memberItemsByGroup).map(([id, members]) => [id, members.length])),
+    loading: loadingMembers,
+  }), [items, showTree, treeData, treeColW, aggregated, expandedAggGroups, memberItemsByGroup, loadingMembers]);
+  const columnGeometry = useMemo(() => {
+    const prefixCount = tableColumnWidths.length - timelineColumnCount;
+    return {
+      widths: tableColumnWidths.slice(prefixCount),
+      offset: tableColumnWidths.slice(0, prefixCount).reduce((sum, width) => sum + width, 0),
+      frozenWidth: CHECKBOX_COL_WIDTH + DETAIL_COL_WIDTH + (showTree ? treeColW : 0)
+        + visiblePrePeriodCols.slice(0, frozenCount).reduce((sum, column) => sum + column.width, 0),
+    };
+  }, [frozenCount, showTree, tableColumnWidths, timelineColumnCount, treeColW, visiblePrePeriodCols]);
+  const virtualRows = useVirtualTableGroups({
+    groups: rowGroups,
+    zoom: tableZoom,
+    overscan: showTree ? 1 : 6,
+    geometryKey: `${textSize}:${tableStyle}`,
+    resetKey: `${items[0]?.id ?? 0}:${items.at(-1)?.id ?? 0}:${items.length}`,
+    columns: columnGeometry,
+  });
+  const timelineRenderWindows = useMemo(() => timelineSections.map((section, index) => virtualSectionWindow(
+    virtualRows.columnWindow ?? { start: 0, end: timelineColumnCount },
+    timelineSectionOffsets[index] - visiblePrePeriodCols.length,
+    section.kind === 'warehouse' ? section.columns.length : displayMonths + (section.group.showPrior ? 1 : 0),
+  )), [displayMonths, timelineColumnCount, timelineSectionOffsets, timelineSections, virtualRows.columnWindow, visiblePrePeriodCols.length]);
+  const mountedSelectionColumns = useMemo(() => [
+    ...visiblePrePeriodCols.map((_, index) => index),
+    ...timelineRenderWindows.flatMap((window, index) => Array.from({ length: window.end - window.start },
+      (_, column) => timelineSectionOffsets[index] + window.start + column)),
+  ], [timelineRenderWindows, timelineSectionOffsets, visiblePrePeriodCols]);
 
   // 合計列：把 server 回的 period 合計依 periodIndex 建 map，footer 逐格查
   const periodTotalMap = useMemo(
@@ -796,18 +851,15 @@ export function TraditionalView({
   const draggingRef = useRef(false);
   const tableRef = useRef<HTMLTableElement>(null);
   const setDraftAnchor = useCallback((next: Cell | null | ((prev: Cell | null) => Cell | null)) => {
-    _setDraftAnchor((prev) => {
-      const v = typeof next === 'function' ? next(prev) : next;
-      draftAnchorRef.current = v;
-      return v;
-    });
+    const value = typeof next === 'function' ? next(draftAnchorRef.current) : next;
+    draftAnchorRef.current = value;
+    _setDraftAnchor(value);
   }, []);
   const setDraftFocus = useCallback((next: Cell | null | ((prev: Cell | null) => Cell | null)) => {
-    _setDraftFocus((prev) => {
-      const v = typeof next === 'function' ? next(prev) : next;
-      draftFocusRef.current = v;
-      return v;
-    });
+    // Mouseup can precede React's render of an rAF update; flush must already see its endpoint.
+    const value = typeof next === 'function' ? next(draftFocusRef.current) : next;
+    draftFocusRef.current = value;
+    _setDraftFocus(value);
   }, []);
   const setDragging = useCallback((v: boolean) => {
     draggingRef.current = v;
@@ -834,7 +886,8 @@ export function TraditionalView({
     rects: effectiveRects,
     tableSelector: '.fg-monthly-trad-table',
     firstSelectableChildIndex: 3 + (showTree && treeData && treeColW > 0 ? 1 : 0),
-  }), [effectiveRects, showTree, treeColW, treeData]);
+    columnIndices: mountedSelectionColumns,
+  }), [effectiveRects, mountedSelectionColumns, showTree, treeColW, treeData]);
 
   const clearSelection = useCallback(() => {
     cancelScheduledDraftFocus();
@@ -1339,7 +1392,7 @@ export function TraditionalView({
                 }`}
                 onClick={isAggHead ? (e) => {
                   // 點在可框選的資料格 → 那是框選操作，不要觸發聚合列展開
-                  if (!(e.target as HTMLElement).closest('td[data-selc]')) handleToggleAggregated(item);
+                  if (!(e.target as HTMLElement).closest('td[data-selc], [data-virtual-column-spacer]')) handleToggleAggregated(item);
                 } : undefined}
               >
                 {/* Checkbox column (sticky leftmost) — 列高亮標記 */}
@@ -1445,7 +1498,11 @@ export function TraditionalView({
                     // For aggregated rows, the partVersion cell shows tooltip listing all variants
                     const tooltip = isPartVersion && aggregated && item.aggregatedMembers && item.aggregatedMembers.length > 0
                       ? `聚合成員 (${item.aggregatedMembers.length}):\n${item.aggregatedMembers.join('\n')}`
-                      : String(val || '');
+                      : col.key === 'firstProcessSourceType'
+                        ? val === '混合'
+                          ? snapshot ? '聚合成員來源不同或部分未提供，請切換按版本檢視各成員來源。' : '聚合成員來源不同或部分未提供，請展開查看成員。'
+                          : `首站完工 ERP：${item.firstProcessErpPartNo || '此 Run 未提供'}`
+                        : String(val || '');
                     const isAggHeader = isPartVersion && aggregated && item.aggregatedMembers && item.aggregatedMembers.length > 1;
                     const frozenBg = aggCellBg || pinBg(gi, rowIdx, rowZebraBg);
                     return (
@@ -1658,7 +1715,7 @@ export function TraditionalView({
                 {timelineSections.map((section, sectionIdx) => {
                   if (section.kind === 'warehouse') {
                     return (
-                      <Fragment key={section.key}>
+                      <VirtualTimelineSection key={section.key} index={sectionIdx}>
                         {section.columns.map((column, columnIdx) => {
                           const rawValue = item[column.key as keyof FgMonthlyItem];
                           const value = rawValue == null ? null : Number(rawValue);
@@ -1688,12 +1745,12 @@ export function TraditionalView({
                             </td>
                           );
                         })}
-                      </Fragment>
+                      </VirtualTimelineSection>
                     );
                   }
                   const g = section.group;
                   return (
-                  <Fragment key={section.key}>
+                  <VirtualTimelineSection key={section.key} index={sectionIdx}>
                   {g.showPrior && g.prior && (() => {
                     const val = Number(item[g.prior.key as keyof FgMonthlyItem]) || 0;
                     return (
@@ -1823,7 +1880,7 @@ export function TraditionalView({
                       </td>
                     );
                   })}
-                  </Fragment>
+                  </VirtualTimelineSection>
                   );
                 })}
               </tr>
@@ -2097,10 +2154,10 @@ export function TraditionalView({
                             </td>
                           );
                         })}
-                        {timelineSections.map((section) => {
+                        {timelineSections.map((section, sectionIdx) => {
                           if (section.kind === 'warehouse') {
                             return (
-                              <Fragment key={section.key}>
+                              <VirtualTimelineSection key={section.key} index={sectionIdx}>
                                 {section.columns.map((column) => {
                                   const rawValue = member[column.key as keyof FgMonthlyItem];
                                   const value = rawValue == null ? null : Number(rawValue);
@@ -2126,12 +2183,12 @@ export function TraditionalView({
                                     </td>
                                   );
                                 })}
-                              </Fragment>
+                              </VirtualTimelineSection>
                             );
                           }
                           const g = section.group;
                           return (
-                          <Fragment key={section.key}>
+                          <VirtualTimelineSection key={section.key} index={sectionIdx}>
                           {g.showPrior && g.prior && (() => {
                             const v = Number(member[g.prior.key as keyof FgMonthlyItem]) || 0;
                             return (
@@ -2237,7 +2294,7 @@ export function TraditionalView({
                               </td>
                             );
                           })}
-                          </Fragment>
+                          </VirtualTimelineSection>
                           );
                         })}
                       </tr>
@@ -2257,21 +2314,6 @@ export function TraditionalView({
     onShowDetail, onShowWarehouseStock, onShowPeriodSource, handleToggleAggregated,
     openStockCalculation, pinBg, pinStyle, toggleHighlight,
   ]);
-  const tableZoom = TEXT_ZOOM_LEVELS[textSize] || 1;
-  const rowGroups = useMemo(() => buildFgRowGroups(items, {
-    showTree: Boolean(showTree && treeData && treeColW > 0),
-    aggregated,
-    expanded: expandedAggGroups,
-    memberCounts: Object.fromEntries(Object.entries(memberItemsByGroup).map(([id, members]) => [id, members.length])),
-    loading: loadingMembers,
-  }), [items, showTree, treeData, treeColW, aggregated, expandedAggGroups, memberItemsByGroup, loadingMembers]);
-  const virtualRows = useVirtualTableGroups({
-    groups: rowGroups,
-    zoom: tableZoom,
-    overscan: showTree ? 1 : 6,
-    geometryKey: `${textSize}:${tableStyle}`,
-    resetKey: `${items[0]?.id ?? 0}:${items.at(-1)?.id ?? 0}:${items.length}`,
-  });
   const firstRenderedRow = rowGroups[virtualRows.start]?.start ?? 0;
   const lastRenderedRow = rowGroups[virtualRows.end - 1]?.end ?? 0;
   const renderedRows = useVirtualTableRowNodes({
@@ -2280,6 +2322,7 @@ export function TraditionalView({
     end: lastRenderedRow,
     renderRow,
     renderVersion: renderRow,
+    maxCachedRows: 96,
   });
   const bodyColSpan = tableColumnWidths.length;
 
@@ -2397,6 +2440,7 @@ export function TraditionalView({
       >
       {highlightCss && <style>{highlightCss}</style>}
       {selectionCss && <style>{selectionCss}</style>}
+      <VirtualTimelineWindows.Provider value={timelineRenderWindows}>
       <table
         ref={tableRef}
         tabIndex={-1}
@@ -2551,6 +2595,7 @@ export function TraditionalView({
               const headerBg = (isWo && col.headerBg) ? col.headerBg : 'bg-slate-100';
               const isFrozenGroup = col.group === 'frozen';
               const isMaterialReminder = col.key === 'materialReminder';
+              const isFirstProcessColumn = col.key === 'firstProcess' || col.key === 'firstProcessSourceType';
               return (
                 <th
                   key={col.key}
@@ -2560,8 +2605,9 @@ export function TraditionalView({
                   <ColumnHeaderButton
                     column={columnHeaderById.get(col.key)!}
                     controller={columnHeaderController}
-                    label={col.label}
-                    labelClassName={isMaterialReminder ? 'text-center pl-3.5' : isFrozenGroup ? 'text-left' : 'text-right'}
+                    label={col.key === 'firstProcess' ? '第一\n製程' : col.key === 'firstProcessSourceType' ? '首站\n預設來源' : col.label}
+                    className={isFirstProcessColumn ? '!min-w-0 flex-wrap' : undefined}
+                    labelClassName={isFirstProcessColumn ? 'basis-full text-left' : isMaterialReminder ? 'text-center pl-3.5' : isFrozenGroup ? 'text-left' : 'text-right'}
                   />
                 </th>
               );
@@ -2709,6 +2755,7 @@ export function TraditionalView({
           </tfoot>
         )}
       </table>
+      </VirtualTimelineWindows.Provider>
       </div>
       {active && <CellContextMenu {...cellMenu.contextMenuProps} />}
       {active && stockCalculation && (

@@ -5,7 +5,7 @@ import type { ArchiveWeeklyReport } from '../archive/weekly-report-contract';
 import { dataset, type DemoDataset, type DemoRow } from './data';
 import { DemoError } from './run-control';
 
-export const archiveRuns: ArchiveRunItem[] = Array.from({ length: 64 }, (_, index) => ({ id: `d3e00000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`, sourceRunId: 1000 + index + 1, versionCode: `DEMO-HISTORY-${String(64 - index).padStart(3, '0')}`, runDate: `2026-09-0${3 - index % 3}`, sourceStatus: 'completed', verifiedAt: '2026-09-04T00:00:00.000Z', generation: index === 63 ? 'G1' : 'G4', seedFileName: 'generated-synthetic-seed.json' }));
+export const archiveRuns: ArchiveRunItem[] = Array.from({ length: 64 }, (_, index) => ({ id: `d3e00000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`, sourceRunId: 1000 + index + 1, versionCode: `DEMO-HISTORY-${String(64 - index).padStart(3, '0')}`, runDate: `2026-09-0${3 - index % 3}`, sourceStatus: 'completed', verifiedAt: '2026-09-04T00:00:00.000Z', generation: index === 63 ? 'G1' : index === 62 ? 'G4' : 'G5', seedFileName: 'generated-synthetic-seed.json' }));
 export function archiveRun(id: string): ArchiveRunItem { const run = archiveRuns.find((item) => item.id === id); if (!run) throw new DemoError('找不到合成歷史版本。', 404); return run; }
 export function archiveDataset(id: string): DemoDataset {
   const run = archiveRun(id);
@@ -36,8 +36,10 @@ export function archiveFgReport(id: string, params: URLSearchParams): ArchiveFgR
   const aggregated = flag === 'true';
   const rows = filtered(data.fg.filter((row) => row.isAggregated === aggregated), params, ['forgingParent', 'customerPartNo', 'erpPartNo', 'partVersion', 'customerCode', 'forgingMachine', 'shortageStartPeriod', 'currentStockPc']);
   const selected = rows.slice((page - 1) * pageSize, page * pageSize);
-  const missingFields = run.generation === 'G1' ? ['mainStockPc', 'auxStockPc'] : [];
-  return { run, page, pageSize, total: rows.length, aggregated, warehouseAvailable: run.generation === 'G4', missingFields, rows: archiveScalars('FgMonthly', selected, missingFields), periods: archiveScalars('FgMonthlyPeriod', selected.flatMap((row) => data.fgPeriods[String(row.partVersion) + (aggregated ? ':aggregate' : '')] ?? [])) };
+  const firstProcessFields = ['firstProcessErpPartNo', 'firstProcessSourceType'];
+  const missingFields = run.generation === 'G1' ? ['mainStockPc', 'auxStockPc', ...firstProcessFields]
+    : run.generation === 'G4' ? firstProcessFields : [];
+  return { run, page, pageSize, total: rows.length, aggregated, warehouseAvailable: run.generation !== 'G1', missingFields, rows: archiveScalars('FgMonthly', selected, missingFields), periods: archiveScalars('FgMonthlyPeriod', selected.flatMap((row) => data.fgPeriods[String(row.partVersion) + (aggregated ? ':aggregate' : '')] ?? [])) };
 }
 export function archiveWeeklyReport(id: string, params: URLSearchParams): ArchiveWeeklyReport {
   const run = archiveRun(id), data = archiveDataset(id), { page, pageSize } = query(params);
@@ -49,7 +51,7 @@ export function archiveWeeklyReport(id: string, params: URLSearchParams): Archiv
   const rows = filtered(source, params, component ? ['materialPartNo', 'goodStockPc', 'stockWeeks', 'shortageStartWeek'] : ['partVersion', 'customerCode', 'erpPartNo', 'shortageStartWeek', 'totalFgDiff']);
   const selected = rows.slice((page - 1) * pageSize, page * pageSize);
   const map = component ? data.cwPeriods : data.salesPeriods;
-  return { run, kind: kind as 'component' | 'sales', mrpType, page, pageSize, total: rows.length, missingFields: [], warehouseAvailable: run.generation === 'G4', rows: archiveScalars(component ? 'ComponentWeekly' : 'SalesMeeting', selected), periods: archiveScalars(component ? 'ComponentWeeklyPeriod' : 'SalesMeetingPeriod', selected.flatMap((row) => map[String(row[component ? 'materialPartNo' : 'partVersion'])] ?? [])) };
+  return { run, kind: kind as 'component' | 'sales', mrpType, page, pageSize, total: rows.length, missingFields: [], warehouseAvailable: run.generation !== 'G1', rows: archiveScalars(component ? 'ComponentWeekly' : 'SalesMeeting', selected), periods: archiveScalars(component ? 'ComponentWeeklyPeriod' : 'SalesMeetingPeriod', selected.flatMap((row) => map[String(row[component ? 'materialPartNo' : 'partVersion'])] ?? [])) };
 }
 const tables: Record<ArchiveView, [string, string]> = { 'fg-monthly': ['FgMonthly', 'fg'], 'fg-periods': ['FgMonthlyPeriod', 'fgPeriods'], 'component-weekly': ['ComponentWeekly', 'cw'], 'component-periods': ['ComponentWeeklyPeriod', 'cwPeriods'], 'sales-meeting': ['SalesMeeting', 'sales'], 'sales-periods': ['SalesMeetingPeriod', 'salesPeriods'], inventory: ['StagingInventory', 'inventory'], orders: ['StagingOrder', 'orders'], forecasts: ['StagingForecast', 'forecasts'], 'production-plans': ['StagingProductionPlan', 'production_plans'], 'work-orders': ['StagingWorkOrder', 'work_orders'], bom: ['StagingWorkOrderBom', 'work_order_bom'], purchases: ['StagingPurchaseOrder', 'purchase_orders'], movements: ['StagingWorkOrderMaterialMovement', 'work_order_material_movements'] };
 export function archiveGet(path: string[], params: URLSearchParams): unknown {

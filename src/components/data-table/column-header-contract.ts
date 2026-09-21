@@ -131,6 +131,7 @@ const IMMEDIATE_SERVER_FACET_COLUMNS = new Set([
   'unit',
   'forgingMachine',
   'firstProcess',
+  'firstProcessSourceType',
   'productStatus',
   'fgStatus04',
   'subtypeCode',

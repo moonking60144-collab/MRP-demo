@@ -4,6 +4,8 @@ import { WAREHOUSE_STOCK_GROUPS } from '@/lib/mrp/warehouse-stock';
 const INVENTORY_DESCRIPTION = '庫存資料檢核結果，不代表庫存足夠。';
 const MATERIAL_DESCRIPTION = '依工令 BOM 與元件週推提供提醒；未做逐單配料，材料缺口不等於成品欠產量。';
 const SHORTAGE_DESCRIPTION = '成品供需推算結果，不代表原料已備齊。';
+const FIRST_PROCESS_DESCRIPTION = '依成品製程明細 No 排序的第一筆製程，不從成品 ERP 尾碼或 BOM 上游推斷。聚合成員不同時顯示混合。';
+const FIRST_SOURCE_DESCRIPTION = '第一筆製程的完工 ERP 預設來源（內製／委外／採購），不是整件產品分類，也不是工令實際來源。混合代表成員來源不同或部分未提供；可切換按版本檢視各成員來源。— 代表此 Run 未提供。';
 
 export const DB_SOURCE_COLUMN: MrpColumnDef = {
   id: 'dbSource', header: '來源', filterType: 'text', width: 55, align: 'center', defaultVisible: false,
@@ -16,6 +18,8 @@ export const FG_MONTHLY_SIMPLE_COLUMNS: MrpColumnDef[] = [
   { id: 'customerCode', header: '客戶', filterType: 'enum', enumValues: [] },
   { id: 'erpPartNo', header: 'ERP料號', filterType: 'text', mono: true },
   { id: 'forgingMachine', header: '機台', filterType: 'text', width: 60 },
+  { id: 'firstProcess', header: '第一製程', description: FIRST_PROCESS_DESCRIPTION, filterType: 'text', width: 56 },
+  { id: 'firstProcessSourceType', header: '首站預設來源', description: FIRST_SOURCE_DESCRIPTION, filterType: 'text', width: 72 },
   { id: 'forgingParent', header: '鍛造母件', filterType: 'text' },
   { id: 'sortGroup', header: '排序', filterType: 'numeric', align: 'center', width: 50 },
   { id: 'currentStockPc', header: '可用成品庫存pc', filterType: 'numeric', align: 'right', mono: true },
@@ -35,7 +39,6 @@ export const FG_MONTHLY_SIMPLE_COLUMNS: MrpColumnDef[] = [
 
 // Additional columns shown only in Detailed view
 export const FG_MONTHLY_DETAILED_EXTRA_COLUMNS: MrpColumnDef[] = [
-  { id: 'firstProcess', header: '製程1', filterType: 'text' },
   { id: 'productStatus', header: '版本狀態', filterType: 'text' },
   { id: 'stockPeriods', header: '備庫期數', filterType: 'numeric', align: 'right' },
   { id: 'unitWeightG', header: '單位重g', filterType: 'numeric', align: 'right', mono: true },
@@ -97,6 +100,8 @@ export const FG_TRAD_FROZEN: FgTradCol[] = [
   { key: 'surfaceTreatment', label: '表面處理條件', width: 190, filterType: 'text' },
   { key: 'sortGroup', label: '排序', width: 45, filterType: 'numeric', align: 'center' },
   { key: 'forgingMachine', label: '機台', width: 55, filterType: 'text' },
+  { key: 'firstProcess', label: '第一製程', description: FIRST_PROCESS_DESCRIPTION, width: 56, filterType: 'text' },
+  { key: 'firstProcessSourceType', label: '首站預設來源', description: FIRST_SOURCE_DESCRIPTION, width: 72, filterType: 'text' },
 ];
 
 // Status 群組緊接 Part Info 之後（對齊 Source d4/22 版面）

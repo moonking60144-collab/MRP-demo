@@ -31,6 +31,30 @@ test('一般資料列幾何摘要能辨識不等高列', () => {
   assert.equal(summarizeVirtualTableRowHeights([0, Number.NaN]), null);
 });
 
+test('有上限的同頁列快取可折返重用，但資料或內容版本改變必須失效', () => {
+  const items = Array.from({ length: 200 }, (_, index) => ({ id: index }));
+  let calls = 0;
+  const renderRow = (_item: { id: number }, index: number) => `ROW-${index}:${++calls}`;
+  const props = { items, renderRow, renderVersion: 'A', maxCachedRows: 96 };
+  let current = resolveVirtualTableRowNodeCache({ ...props, current: null, start: 0, end: 40 });
+  const first = current.nodes.get(0);
+  current = resolveVirtualTableRowNodeCache({ ...props, current, start: 40, end: 80 });
+  current = resolveVirtualTableRowNodeCache({ ...props, current, start: 0, end: 40 });
+  assert.equal(current.nodes.get(0), first);
+  assert.equal(calls, 80);
+  for (let start = 80; start < 200; start += 20) {
+    current = resolveVirtualTableRowNodeCache({ ...props, current, start, end: Math.min(200, start + 40) });
+    assert(current.nodes.size <= 96);
+    for (let row = start; row < Math.min(200, start + 40); row++) assert.match(String(current.nodes.get(row)), new RegExp(`^ROW-${row}:`));
+  }
+  current = resolveVirtualTableRowNodeCache({ ...props, current, start: 0, end: 40, renderVersion: 'B' });
+  assert.notEqual(current.nodes.get(0), first);
+  assert.equal(current.nodes.size, 40);
+  const updated = current.nodes.get(0);
+  current = resolveVirtualTableRowNodeCache({ ...props, current, items: items.slice(), start: 0, end: 40, renderVersion: 'B' });
+  assert.notEqual(current.nodes.get(0), updated);
+});
+
 test('scrollTop 改變但可視列範圍相同時沿用虛擬視窗狀態', () => {
   const current = {
     start: 10,

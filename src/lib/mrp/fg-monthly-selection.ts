@@ -58,11 +58,19 @@ export function buildSelectionRangeCss(args: {
   rects: BoxSelRect[];
   tableSelector: string;
   firstSelectableChildIndex: number;
+  columnIndices?: number[];
 }): string {
   if (args.rects.length === 0) return '';
 
   const selectors = new Set<string>();
   for (const rect of args.rects) {
+    if (args.columnIndices) {
+      const columns = args.columnIndices.filter(column => column >= rect.minC && column <= rect.maxC);
+      if (columns.length === 0) continue;
+      const rows = Array.from({ length: rect.maxR - rect.minR + 1 }, (_, index) => `[data-selr="${rect.minR + index}"]`);
+      selectors.add(`${args.tableSelector} td:is(${rows.join(',')}):is(${columns.map(column => `[data-selc="${column}"]`).join(',')})`);
+      continue;
+    }
     const firstChild = args.firstSelectableChildIndex + rect.minC;
     const lastChild = args.firstSelectableChildIndex + rect.maxC;
     for (let row = rect.minR; row <= rect.maxR; row++) {
@@ -73,7 +81,7 @@ export function buildSelectionRangeCss(args: {
     }
   }
 
-  return `${[...selectors].join(',')}{background-color:#bfdbfe !important}`;
+  return selectors.size > 0 ? `${[...selectors].join(',')}{background-color:#bfdbfe !important}` : '';
 }
 
 export function isCellInSelection(

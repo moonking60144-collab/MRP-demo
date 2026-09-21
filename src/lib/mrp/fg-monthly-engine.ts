@@ -34,6 +34,7 @@ import {
 import { createCalculationProgressThrottle } from './calculation-progress';
 import { settleAllOrThrow } from './run-attempt-control';
 import { resolveInventoryAvailability } from '../sync/inventory-snapshot';
+import { aggregateFirstProcessValue } from '../sync/first-process-source';
 import {
   getRunInventoryRows,
   type RunCalculationInputs,
@@ -50,6 +51,8 @@ interface PartData {
   erpPartNo: string | null;
   forgingMachine: string | null;
   firstProcess: string | null;
+  firstProcessErpPartNo?: string | null;
+  firstProcessSourceType?: string | null;
   surfaceTreatment: string | null;
   forgingParent: string | null;
   processBomVersion: string | null;
@@ -124,6 +127,9 @@ interface PartProjectionResult {
 
 interface FgMonthlyAggregationSummary {
   partVersion: string;
+  firstProcess?: string | null;
+  firstProcessErpPartNo?: string | null;
+  firstProcessSourceType?: string | null;
   woScheduled: unknown;
   woUnscheduled: unknown;
   woTotal: unknown;
@@ -388,13 +394,16 @@ export async function calculateFgMonthly(
   for (const part of parts) {
     if (!part.partVersion || !part.erpPartNo) continue;
 
+    const inv = inventoryByErp.get(part.erpPartNo);
     const partData: PartData = {
       partVersion: part.partVersion,
       customerPartNo: part.customerPartNo,
       customerCode: part.customerCode,
       erpPartNo: part.erpPartNo,
       forgingMachine: part.forgingMachine,
-      firstProcess: part.firstProcess,
+      firstProcess: inv?.firstProcess ?? part.firstProcess,
+      firstProcessErpPartNo: inv?.firstProcessErpPartNo ?? null,
+      firstProcessSourceType: inv?.firstProcessSourceType ?? null,
       surfaceTreatment: part.surfaceTreatment,
       forgingParent: part.forgingParent,
       processBomVersion: part.processBomVersion,
@@ -405,7 +414,6 @@ export async function calculateFgMonthly(
       mainMaterialKg: Number(part.mainMaterialKg) || 0,
       skipFgInventory: part.skipFgInventory,
     };
-    const inv = inventoryByErp.get(part.erpPartNo);
     const stock = resolveInventoryAvailability({
       goodStockPc: inv?.goodStockPc,
       goodStockKg: inv?.goodStockKg,
@@ -572,6 +580,8 @@ export async function calculateFgMonthly(
       erpPartNo: partData.erpPartNo,
       forgingMachine: partData.forgingMachine,
       firstProcess: partData.firstProcess,
+      firstProcessErpPartNo: partData.firstProcessErpPartNo ?? null,
+      firstProcessSourceType: partData.firstProcessSourceType ?? null,
       surfaceTreatment: partData.surfaceTreatment,
       forgingParent: partData.forgingParent,
       processBomVersion: partData.processBomVersion,
@@ -854,7 +864,9 @@ export async function calculateFgMonthlyAggregated(
       customerCode: main.customerCode,
       erpPartNo: main.erpPartNo,
       forgingMachine: main.forgingMachine,
-      firstProcess: main.firstProcess,
+      firstProcess: aggregateFirstProcessValue(memberSummaries.map(row => row.firstProcess)),
+      firstProcessErpPartNo: aggregateFirstProcessValue(memberSummaries.map(row => row.firstProcessErpPartNo)),
+      firstProcessSourceType: aggregateFirstProcessValue(memberSummaries.map(row => row.firstProcessSourceType)),
       surfaceTreatment: main.surfaceTreatment,
       forgingParent: main.forgingParent,
       processBomVersion: main.processBomVersion,

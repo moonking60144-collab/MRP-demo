@@ -131,6 +131,8 @@ interface FgMonthlyItem {
   usesSharedErpPool: boolean;
   forgingMachine: string | null;
   firstProcess: string | null;
+  firstProcessErpPartNo?: string | null;
+  firstProcessSourceType?: string | null;
   surfaceTreatment: string | null;
   forgingParent: string | null;
   processBomVersion: string | null;
@@ -1220,11 +1222,12 @@ export function FgMonthlyClient() {
               {colVis.isVisible('customerCode') && <ColumnHeaderCell column={columns.find((column) => column.id === 'customerCode')!} controller={columnHeader.menuController} />}
               {colVis.isVisible('erpPartNo') && <ColumnHeaderCell column={columns.find((column) => column.id === 'erpPartNo')!} controller={columnHeader.menuController} />}
               {colVis.isVisible('forgingMachine') && <ColumnHeaderCell column={columns.find((column) => column.id === 'forgingMachine')!} controller={columnHeader.menuController} />}
+              {colVis.isVisible('firstProcess') && <ColumnHeaderCell column={columns.find((column) => column.id === 'firstProcess')!} controller={columnHeader.menuController} className="!px-1.5" buttonClassName="!min-w-0 flex-wrap [&>span:first-child]:basis-full" style={{ minWidth: 56 }} />}
+              {colVis.isVisible('firstProcessSourceType') && <ColumnHeaderCell column={columns.find((column) => column.id === 'firstProcessSourceType')!} controller={columnHeader.menuController} className="!px-1.5" buttonClassName="!min-w-0 flex-wrap [&>span:first-child]:basis-full" style={{ minWidth: 72 }} />}
               {colVis.isVisible('forgingParent') && <ColumnHeaderCell column={columns.find((column) => column.id === 'forgingParent')!} controller={columnHeader.menuController} />}
               {colVis.isVisible('sortGroup') && <ColumnHeaderCell column={columns.find((column) => column.id === 'sortGroup')!} controller={columnHeader.menuController} />}
               {viewMode === 'detailed' && (
                 <>
-                  {colVis.isVisible('firstProcess') && <ColumnHeaderCell column={columns.find((column) => column.id === 'firstProcess')!} controller={columnHeader.menuController} />}
                   {colVis.isVisible('productStatus') && <ColumnHeaderCell column={columns.find((column) => column.id === 'productStatus')!} controller={columnHeader.menuController} />}
                   {colVis.isVisible('stockPeriods') && <ColumnHeaderCell column={columns.find((column) => column.id === 'stockPeriods')!} controller={columnHeader.menuController} />}
                 </>
@@ -1313,11 +1316,12 @@ export function FgMonthlyClient() {
                       </td>
                     )}
                     {colVis.isVisible('forgingMachine') && <td className="text-xs">{item.forgingMachine || '—'}</td>}
+                    {colVis.isVisible('firstProcess') && <td className="text-xs">{item.firstProcess || '—'}</td>}
+                    {colVis.isVisible('firstProcessSourceType') && <td className="text-xs" title={item.firstProcessSourceType === '混合' ? '聚合成員來源不同或部分未提供，請切換按版本檢視各成員來源。' : `首站完工 ERP：${item.firstProcessErpPartNo || '此 Run 未提供'}`}>{item.firstProcessSourceType || '—'}</td>}
                     {colVis.isVisible('forgingParent') && <td className="text-xs">{item.forgingParent || '—'}</td>}
                     {colVis.isVisible('sortGroup') && <td className="text-xs text-center">{item.sortGroup ?? '—'}</td>}
                     {viewMode === 'detailed' && (
                       <>
-                        {colVis.isVisible('firstProcess') && <td className="text-xs">{item.firstProcess || '—'}</td>}
                         {colVis.isVisible('productStatus') && <td className="text-xs">{item.productStatus || '—'}</td>}
                         {colVis.isVisible('stockPeriods') && <td className="text-xs text-center">{item.stockPeriods ?? '—'}</td>}
                       </>
@@ -1553,7 +1557,9 @@ export function FgMonthlyClient() {
                   <span>客戶料號: <b className="text-slate-700">{expandedItem.customerPartNo || '—'}</b></span>
                   <span>ERP料號: <b className="text-slate-700 font-mono whitespace-nowrap">{expandedItem.erpPartNo || '—'}</b></span>
                   <span>機台: <b className="text-slate-700">{expandedItem.forgingMachine || '—'}</b></span>
-                  <span>製程1: <b className="text-slate-700">{expandedItem.firstProcess || '—'}</b></span>
+                  <span>第一製程: <b className="text-slate-700">{expandedItem.firstProcess || '—'}</b></span>
+                  <span>首站預設來源: <b className="text-slate-700">{expandedItem.firstProcessSourceType || '—'}</b></span>
+                  <span>首站完工 ERP: <b className="text-slate-700 font-mono">{expandedItem.firstProcessErpPartNo || '—'}</b></span>
                   <span>客戶代碼: <b className="text-slate-700">{expandedItem.customerCode || '—'}</b></span>
                   <span className="inline-flex items-center gap-1">
                     可用成品庫存pc:

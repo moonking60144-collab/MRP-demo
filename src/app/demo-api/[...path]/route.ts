@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dataset, demoPreferences, runs } from '@/lib/demo/data';
+import { dataset, demoPreferences, runs, type DemoDataset } from '@/lib/demo/data';
 import { summarizeMaterialReminder } from '@/lib/mrp/material-reminder';
 import { fgMonthlyTotals, filterReportRows, paginateReportRows, reportFilterFields, usageWarnings } from '@/lib/demo/reports';
 import { latestRun, mutate, state } from '@/lib/demo/store';
@@ -15,6 +15,55 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 type Context = { params: Promise<{ path: string[] }> };
 const json = (data: unknown, status = 200, storage = 'memory') => NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store', 'X-MRP-Data': 'synthetic', 'X-MRP-Storage': storage } });
+
+type MaterialReminderTarget = { partVersion: string; aggregated: boolean };
+
+function materialReminderResponse(data: DemoDataset, input: {
+  runId: number;
+  archiveId: string | null;
+  dbSource: string | null;
+  includeRows: boolean;
+  targets: MaterialReminderTarget[];
+  maxTargets: number;
+  maxDetailTargets: number;
+}) {
+  const { runId, archiveId, dbSource, includeRows, targets, maxTargets, maxDetailTargets } = input;
+  if (!Number.isSafeInteger(runId) || runId <= 0 || !Array.isArray(targets) || targets.length === 0 || targets.length > maxTargets
+    || (includeRows && targets.length > maxDetailTargets)
+    || targets.some((target) => !target || typeof target.partVersion !== 'string' || !target.partVersion.trim()
+      || target.partVersion.length > 200 || typeof target.aggregated !== 'boolean')) {
+    throw new DemoError('材料查詢條件無效。');
+  }
+  const workOrdersByPart = new Map<string, string[]>();
+  for (const row of data.source.work_orders) {
+    const partVersion = String(row.partVersion);
+    const jobs = workOrdersByPart.get(partVersion) ?? [];
+    jobs.push(String(row.woNumber));
+    workOrdersByPart.set(partVersion, jobs);
+  }
+  const bomByJob = new Map<string, typeof data.source.work_order_bom>();
+  for (const row of data.source.work_order_bom) {
+    const job = String(row.woNumber);
+    const rows = bomByJob.get(job) ?? [];
+    rows.push(row);
+    bomByJob.set(job, rows);
+  }
+  const materialByPartNo = new Map(data.cw.map((row) => [String(row.materialPartNo), row]));
+  const items = targets.map((target) => {
+    const fg = data.fg.find((row) => row.partVersion === target.partVersion && row.isAggregated === target.aggregated);
+    const members = !fg ? [] : fg.isAggregated && Array.isArray(fg.aggregatedMembers)
+      ? fg.aggregatedMembers.filter((value): value is string => typeof value === 'string')
+      : [target.partVersion];
+    const jobs = members.flatMap((partVersion) => workOrdersByPart.get(partVersion) ?? []);
+    const rows = jobs.flatMap((job) => bomByJob.get(job) ?? []).map((row) => {
+      const material = materialByPartNo.get(String(row.componentNo));
+      return { partVersion: target.partVersion, woNumber: String(row.woNumber), materialPartNo: String(row.componentNo), mrpType: material ? String(material.mrpType) : null, unit: String(row.unit), reportUnit: material ? String(material.unit) : null, demandDate: String(row.startDate), remainingUsage: row.remainingUsage == null ? null : String(row.remainingUsage), issuedQtyState: String(row.issuedQtyState), movementState: String(row.movementState), shortageStartWeek: material?.shortageStartWeek == null ? null : Number(material.shortageStartWeek), shortageStartDate: material?.shortageStartDate == null ? null : String(material.shortageStartDate) };
+    });
+    const reminder = summarizeMaterialReminder(rows, rows.length > 0);
+    return { ...target, reminder: includeRows ? reminder : { ...reminder, rows: [] } };
+  });
+  return { runId, archiveId, dbSource, detailRowsIncluded: includeRows, items };
+}
 
 export async function GET(request: NextRequest, context: Context) {
   try {
@@ -65,18 +114,8 @@ export async function GET(request: NextRequest, context: Context) {
       return reportJson({ items: data.cw.filter((row) => row.materialPartNo === material && row.mrpType === mrpType), periods: data.cwPeriods[material] ?? [], versionCode: data.run.versionCode, runId, archiveId: null, dbSource: params.get('dbSource'), material, mrpType });
     }
     if (key === 'fg-material-reminders') {
-      const targets: { partVersion: string; aggregated: boolean }[] = JSON.parse(params.get('targets') ?? '[]');
-      if (!Array.isArray(targets) || targets.length > 50 || targets.some((target) => typeof target.partVersion !== 'string' || typeof target.aggregated !== 'boolean')) return json({ error: '材料查詢條件無效' }, 400);
-      return reportJson({ runId, archiveId, dbSource: params.get('dbSource'), items: targets.map((target) => {
-        const fg = data.fg.find((row) => row.partVersion === target.partVersion && row.isAggregated === target.aggregated);
-        const members = fg?.isAggregated ? fg.aggregatedMembers as string[] : [target.partVersion];
-        const jobs = data.source.work_orders.filter((row) => members.includes(String(row.partVersion))).map((row) => String(row.woNumber));
-        const rows = data.source.work_order_bom.filter((row) => jobs.includes(String(row.woNumber))).map((row) => {
-          const material = data.cw.find((item) => item.materialPartNo === row.componentNo);
-          return { partVersion: target.partVersion, woNumber: String(row.woNumber), materialPartNo: String(row.componentNo), mrpType: material ? String(material.mrpType) : null, unit: String(row.unit), reportUnit: material ? String(material.unit) : null, demandDate: String(row.startDate), remainingUsage: row.remainingUsage == null ? null : String(row.remainingUsage), issuedQtyState: String(row.issuedQtyState), movementState: String(row.movementState), shortageStartWeek: material?.shortageStartWeek == null ? null : Number(material.shortageStartWeek), shortageStartDate: material?.shortageStartDate == null ? null : String(material.shortageStartDate) };
-        });
-        return { ...target, reminder: summarizeMaterialReminder(rows, rows.length > 0) };
-      }) });
+      const targets: MaterialReminderTarget[] = JSON.parse(params.get('targets') ?? 'null');
+      return reportJson(materialReminderResponse(data, { runId, archiveId, dbSource: params.get('dbSource'), includeRows: params.get('includeRows') !== 'false', targets, maxTargets: 50, maxDetailTargets: 50 }));
     }
     if (key === 'dashboard') { const rows = data.fg.filter((item) => !item.isAggregated); const shortage = rows.filter((item) => item.shouldPlanProduction).length; return reportJson({ dbMode: state().dbMode, latestRun: latestRun(), summary: { totalParts: rows.length, shortageParts: shortage, partsWithPlans: new Set(suggestions(runId).map((item) => item.partVersion)).size, healthPct: Math.round((rows.length - shortage) / rows.length * 100) }, recentRuns: runs() }); }
     if (key === 'fg-monthly/machines') return json({ machines: ['M1', 'M2', 'M3'] });
@@ -118,6 +157,20 @@ export async function POST(request: NextRequest, context: Context) {
     const key = path.join('/');
     const text = await request.text();
     const body = text ? JSON.parse(text) : {};
+    if (key === 'fg-material-reminders') {
+      const runId = Number(body.runId);
+      const archiveId = body.archiveId === undefined ? null : body.archiveId;
+      const dbSource = body.dbSource === undefined ? null : body.dbSource;
+      if ((archiveId !== null && (typeof archiveId !== 'string' || !archiveId))
+        || (dbSource !== null && (typeof dbSource !== 'string' || !['local', 'docker', 'remote'].includes(dbSource)))
+        || (archiveId && dbSource)) throw new DemoError('材料查詢條件無效。');
+      if (archiveId && archiveRun(archiveId).sourceRunId !== runId) throw new DemoError('歷史版本身分不一致。', 409);
+      const sql = !archiveId && postgresDemoEnabled();
+      const data = archiveId ? archiveDataset(archiveId) : sql ? await readPostgresDataset(runId) : dataset(runId);
+      if (data.run.status !== 'completed') throw new DemoError('版本尚未計算完成。', 409);
+      return json(materialReminderResponse(data, { runId, archiveId, dbSource, includeRows: body.includeRows === true,
+        targets: body.targets, maxTargets: 200, maxDetailTargets: 1 }), 200, sql ? 'postgresql' : 'memory');
+    }
     if (path[0] === 'archive' || request.nextUrl.searchParams.has('archiveId') || body.archiveId) throw new DemoError('歷史版本唯讀。', 405);
     if (key === 'runs') return json({ runId: startRun(undefined, body.applySkipFgInventory === true).id, status: 'calculating' }, 202);
     if (key === 'runs/reset') { const run = stopRun(); return json({ ok: true, run }); }

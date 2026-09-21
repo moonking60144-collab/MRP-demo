@@ -37,6 +37,12 @@ test('欄頭 capability 由 column metadata 決定，不依賴頁面領域判斷
   }), false);
 });
 
+test('首站預設來源為低基數欄，不必先輸入兩個字才能勾選', () => {
+  assert.deepEqual(createServerFacetedOptionSource({
+    id: 'firstProcessSourceType', header: '首站預設來源', filterType: 'text',
+  }), { type: 'server', mode: 'faceted', limit: 100 });
+});
+
 test('server 列表會替所有可篩選欄位啟用 faceted options', () => {
   const columns = withServerFacetedColumnOptions([
     { id: 'partVersion', header: '客料版本', filterType: 'text' },

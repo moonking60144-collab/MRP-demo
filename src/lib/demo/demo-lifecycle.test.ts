@@ -39,6 +39,29 @@ test('歷史清單、原版 adapters、Run 身分反例與唯讀拒絕', async (
   assert.equal((await query('GET', `fg-material-reminders?archiveId=${run.id}&runId=3&targets=[]`)).status, 409);
   assert.equal((await query('PATCH', `fg-monthly/XA-PRODUCT-001-R1/suggestions?archiveId=${run.id}`, { planSequence: 1, suggestedQty: 100 })).status, 405);
 });
+test('2.1.38 首站來源與批次材料摘要沿用固定 Run，明細仍限單一品項', async () => {
+  const runId = latestRun().id, data = dataset(runId);
+  const item = data.fg.find((row) => row.partVersion === 'XA-PRODUCT-001-R1' && row.isAggregated === false)!;
+  assert.equal(item.firstProcess, '成形');
+  assert.equal(item.firstProcessErpPartNo, 'DEMO-FG-001-V01-P01');
+  assert.equal(item.firstProcessSourceType, '內製');
+  const targets = Array.from({ length: 200 }, (_, index) => ({
+    partVersion: index % 2 === 0 ? 'XA-PRODUCT-001-R1' : 'XB-PRODUCT-001-R1', aggregated: false,
+  }));
+  const batch = await query('POST', 'fg-material-reminders', { runId, archiveId: null, dbSource: null, includeRows: false, targets });
+  assert.equal(batch.status, 200);
+  assert.equal(batch.body.detailRowsIncluded, false);
+  assert.equal(batch.body.items.length, 200);
+  assert.ok(batch.body.items.every((row: { reminder: { rows: unknown[] } }) => row.reminder.rows.length === 0));
+  const detail = await query('POST', 'fg-material-reminders', { runId, includeRows: true, targets: targets.slice(0, 1) });
+  assert.equal(detail.status, 200);
+  assert.ok(detail.body.items[0].reminder.rows.length > 0);
+  assert.equal((await query('POST', 'fg-material-reminders', { runId, includeRows: true, targets: targets.slice(0, 2) })).status, 400);
+  const archived = archiveRuns[0];
+  const archiveBatch = await query('POST', 'fg-material-reminders', { runId: archived.sourceRunId, archiveId: archived.id, includeRows: false, targets: targets.slice(0, 2) });
+  assert.equal(archiveBatch.status, 200);
+  assert.equal(archiveBatch.body.archiveId, archived.id);
+});
 test('原明細、共享庫存、需求歸屬、元件用量按同一合成快照對帳', async () => {
   const runId = latestRun().id;
   const source = await query('GET', `fg-monthly/XA-PRODUCT-001-R1/sources?runId=${runId}`);
@@ -130,6 +153,7 @@ test('主檔更新不改快照；暫停、停止、續算與晚到結果不污�
   for (let attempt = 0; attempt < 30 && state().runs.find((run) => run.id === id)?.status === 'calculating'; attempt++) await new Promise((resolve) => setTimeout(resolve, 100));
   assert.equal(latestRun().id, id);
   assert.equal(dataset(id).cw.find((row) => row.materialPartNo === 'DEMO-W-001')?.purchaseLeadWeeks, current + 1);
+  assert.equal(dataset(id).fg.find((row) => row.partVersion === 'XA-PRODUCT-001-R1' && row.isAggregated === false)?.firstProcessSourceType, '內製');
   assert.equal(JSON.stringify(dataset(oldId)), before);
   const generatedNumber = `DEMO-GENERATED-WO-${generatedTransferId}`;
   assert.equal(dataset(id).source.work_orders.find((row) => row.woNumber === generatedNumber)?.woQty, 1000);

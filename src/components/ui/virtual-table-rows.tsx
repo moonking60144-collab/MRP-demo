@@ -63,6 +63,7 @@ export function resolveVirtualTableRowNodeCache<T>({
   renderRow,
   renderVersion,
   start,
+  maxCachedRows = 0,
 }: {
   current: VirtualTableRowNodeCache<T> | null;
   end: number;
@@ -70,9 +71,10 @@ export function resolveVirtualTableRowNodeCache<T>({
   renderRow: (item: T, rowIndex: number) => ReactNode;
   renderVersion: unknown;
   start: number;
+  maxCachedRows?: number;
 }): VirtualTableRowNodeCache<T> {
   const canReuse = current?.items === items && current.renderVersion === renderVersion;
-  const nodes = new Map<number, ReactNode>();
+  const nodes = canReuse ? new Map(current.nodes) : new Map<number, ReactNode>();
   const boundedStart = Math.max(0, Math.min(items.length, Math.floor(start)));
   const boundedEnd = Math.max(
     boundedStart,
@@ -80,11 +82,15 @@ export function resolveVirtualTableRowNodeCache<T>({
   );
   for (let rowIndex = boundedStart; rowIndex < boundedEnd; rowIndex++) {
     if (canReuse && current.nodes.has(rowIndex)) {
-      nodes.set(rowIndex, current.nodes.get(rowIndex));
+      const node = current.nodes.get(rowIndex);
+      nodes.delete(rowIndex);
+      nodes.set(rowIndex, node);
       continue;
     }
     nodes.set(rowIndex, renderRow(items[rowIndex], rowIndex));
   }
+  const limit = Math.max(maxCachedRows, boundedEnd - boundedStart);
+  while (nodes.size > limit) nodes.delete(nodes.keys().next().value!);
   return { items, renderVersion, nodes };
 }
 
@@ -343,12 +349,14 @@ export function useVirtualTableRowNodes<T>({
   renderRow,
   renderVersion,
   start,
+  maxCachedRows = 0,
 }: {
   end: number;
   items: T[];
   renderRow: (item: T, rowIndex: number) => ReactNode;
   renderVersion: unknown;
   start: number;
+  maxCachedRows?: number;
 }) {
   const cacheRef = useRef<VirtualTableRowNodeCache<T> | null>(null);
   const renderRowRef = useRef(renderRow);
@@ -362,10 +370,13 @@ export function useVirtualTableRowNodes<T>({
       renderRow: renderRowRef.current,
       renderVersion,
       start,
+      maxCachedRows,
     });
     cacheRef.current = next;
-    return [...next.nodes.values()];
-  }, [end, items, renderVersion, start]);
+    const boundedStart = Math.max(0, Math.min(items.length, Math.floor(start)));
+    const boundedEnd = Math.max(boundedStart, Math.min(items.length, Math.floor(end)));
+    return Array.from({ length: boundedEnd - boundedStart }, (_, index) => next.nodes.get(boundedStart + index));
+  }, [end, items, maxCachedRows, renderVersion, start]);
 }
 
 export function resolveVirtualTableSpacerHeight(height: number, zoom: number) {

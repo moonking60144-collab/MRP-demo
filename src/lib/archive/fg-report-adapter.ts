@@ -1,7 +1,7 @@
 import type { FgMonthlyItem, PeriodDetail } from '@/components/fg-monthly-traditional';
 import { archiveFgCamel, type ArchiveFgReport } from './fg-report-contract';
 
-const textFields = new Set(['partVersion', 'customerPartNo', 'customerCode', 'erpPartNo', 'forgingMachine', 'firstProcess', 'surfaceTreatment', 'forgingParent', 'processBomVersion', 'productStatus', 'periodLabel', 'periodStart', 'periodEnd']);
+const textFields = new Set(['partVersion', 'customerPartNo', 'customerCode', 'erpPartNo', 'forgingMachine', 'firstProcess', 'firstProcessErpPartNo', 'firstProcessSourceType', 'surfaceTreatment', 'forgingParent', 'processBomVersion', 'productStatus', 'periodLabel', 'periodStart', 'periodEnd']);
 const booleanFields = new Set(['skipFgInventory', 'shouldPlanProduction', 'isAggregated']);
 
 function convert(row: Record<string, string | null>) {

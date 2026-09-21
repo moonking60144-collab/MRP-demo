@@ -37,6 +37,18 @@ test('成品月推將主庫存標示為可用庫存', () => {
   assert.notEqual(traditionalStock?.defaultVisible, false);
 });
 
+test('第一製程與首站預設來源可在三種 view 顯示與篩選，不列入數量合計', () => {
+  for (const columns of [FG_MONTHLY_SIMPLE_COLUMNS, FG_MONTHLY_DETAILED_COLUMNS, FG_MONTHLY_TRADITIONAL_ALL_COLUMNS]) {
+    for (const id of ['firstProcess', 'firstProcessSourceType']) {
+      const column = columns.find(item => item.id === id);
+      assert.equal(column?.filterType, 'text');
+      assert.equal(column?.width, id === 'firstProcess' ? 56 : 72);
+      assert.notEqual(column?.defaultVisible, false);
+      assert.equal(columns.filter(item => item.id === id).length, 1);
+    }
+  }
+});
+
 test('成品月推所有既有欄位預設顯示', () => {
   const detailedBadStock = FG_MONTHLY_DETAILED_COLUMNS.find((column) => column.id === 'badStockPc');
   const traditionalBadStock = FG_MONTHLY_TRADITIONAL_ALL_COLUMNS.find((column) => column.id === 'badStockPc');

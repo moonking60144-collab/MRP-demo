@@ -6,9 +6,9 @@ import { ChevronRight, CircleAlert, Ellipsis, Info, TriangleAlert } from 'lucide
 import { MATERIAL_REMINDER_LABELS, materialWeeklyHref, type MaterialReminder, type MaterialReminderScope } from '@/lib/mrp/material-reminder';
 
 interface Target { partVersion: string; mrpRunId: number; dbSource?: string; materialReminderDbSource?: string; isAggregated?: boolean }
-export function useMaterialReminders<T extends Target>(items: T[], archiveId?: string) {
+export function useMaterialReminders<T extends Target>(items: T[], archiveId?: string, includeRows = false) {
   const key = JSON.stringify(items.map(item => [item.partVersion, item.mrpRunId, item.materialReminderDbSource ?? item.dbSource ?? null, Boolean(item.isAggregated)]));
-  const [result, setResult] = useState<{ key: string; archiveId?: string; values: Record<string, MaterialReminder>; error?: string } | null>(null);
+  const [result, setResult] = useState<{ key: string; archiveId?: string; includeRows: boolean; values: Record<string, MaterialReminder>; error?: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const targets = JSON.parse(key) as Array<[string, number, string | null, boolean]>;
@@ -23,27 +23,24 @@ export function useMaterialReminders<T extends Target>(items: T[], archiveId?: s
     void (async () => {
       const values: Record<string, MaterialReminder> = Object.create(null);
       for (const group of groups.values()) {
-        for (let start = 0; start < group.length; start += 50) {
-          const batch = group.slice(start, start + 50);
-          const params = new URLSearchParams({ runId: String(batch[0][1]), targets: JSON.stringify(batch.map(t => ({ partVersion: t[0], aggregated: t[3] }))) });
-          if (archiveId) params.set('archiveId', archiveId);
-          else if (batch[0][2]) params.set('dbSource', batch[0][2]);
-          const response = await fetch(`/api/fg-material-reminders?${params}`, { signal: controller.signal });
-          const body = await response.json();
-          if (!response.ok) throw new Error(body.error || '關聯材料讀取失敗');
-          if (body.runId !== batch[0][1] || body.archiveId !== (archiveId ?? null) || body.dbSource !== (archiveId ? null : batch[0][2])) throw new Error('關聯材料版本或來源不一致');
-          for (const target of batch) {
-            const row = body.items.find((r: { partVersion: string; aggregated: boolean }) => r.partVersion === target[0] && r.aggregated === target[3]);
-            if (!row) throw new Error('關聯材料回應缺少查詢項目');
-            values[JSON.stringify(target)] = row.reminder;
-          }
+        const body = { runId: group[0][1], archiveId: archiveId ?? null, dbSource: archiveId ? null : group[0][2],
+          includeRows, targets: group.map(target => ({ partVersion: target[0], aggregated: target[3] })) };
+        const response = await fetch('/api/fg-material-reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || '關聯材料讀取失敗');
+        if (payload.runId !== group[0][1] || payload.archiveId !== (archiveId ?? null) || payload.dbSource !== (archiveId ? null : group[0][2]) || payload.detailRowsIncluded !== includeRows) throw new Error('關聯材料版本或來源不一致');
+        const byTarget = new Map<string, { reminder: MaterialReminder }>(payload.items.map((row: { partVersion: string; aggregated: boolean; reminder: MaterialReminder }) => [JSON.stringify([row.partVersion, row.aggregated]), row]));
+        for (const target of group) {
+          const row = byTarget.get(JSON.stringify([target[0], target[3]]));
+          if (!row) throw new Error('關聯材料回應缺少查詢項目');
+          values[JSON.stringify(target)] = row.reminder;
         }
       }
-      if (active) setResult({ key, archiveId, values });
-    })().catch(error => { if (active) setResult({ key, archiveId, values: {}, error: error instanceof Error ? error.message : '關聯材料讀取失敗' }); });
+      if (active) setResult({ key, archiveId, includeRows, values });
+    })().catch(error => { if (active) setResult({ key, archiveId, includeRows, values: {}, error: error instanceof Error ? error.message : '關聯材料讀取失敗' }); });
     return () => { active = false; controller.abort(); };
-  }, [key, archiveId, attempt]);
-  const current = result?.key === key && result.archiveId === archiveId ? result : null;
+  }, [key, archiveId, includeRows, attempt]);
+  const current = result?.key === key && result.archiveId === archiveId && result.includeRows === includeRows ? result : null;
   const enriched = useMemo(() => items.map(item => ({ ...item, materialReminder: current?.values[JSON.stringify([item.partVersion, item.mrpRunId, item.materialReminderDbSource ?? item.dbSource ?? null, Boolean(item.isAggregated)])], materialReminderError: current?.error })), [items, current]);
   return { items: enriched,
     loading: !current, error: current?.error, retry: () => { setResult(null); setAttempt(value => value + 1); } };
@@ -59,7 +56,7 @@ export function MaterialReminderButton({ reminder, error, onClick }: { reminder?
 }
 
 export function FgMaterialReminderPanel({ item, archiveId, initiallyOpen = false }: { item: Target; archiveId?: string; initiallyOpen?: boolean }) {
-  const result = useMaterialReminders([item], archiveId);
+  const result = useMaterialReminders([item], archiveId, true);
   const reminder = result.items[0].materialReminder;
   const scope: MaterialReminderScope = { runId: item.mrpRunId, archiveId, dbSource: archiveId ? undefined : item.materialReminderDbSource ?? item.dbSource };
   const summaryRef = useRef<HTMLElement>(null);
