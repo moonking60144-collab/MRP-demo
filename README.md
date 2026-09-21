@@ -20,9 +20,9 @@
 - 開單規劃、轉單、對帳與工令／BOM 回饋下一版 MRP。
 - 唯讀歷史版本、來源追溯，以及寬表的列／欄雙軸虛擬化。
 
-## 最快開啟
+## 開啟方式
 
-需要 [Node.js 24 LTS](https://nodejs.org/)；不需要 PostgreSQL、Docker、`.env` 或公司帳號。
+需要 [Node.js 24 LTS](https://nodejs.org/)；不需要 PostgreSQL、Docker、`.env`
 
 **Windows：**下載或 clone 後直接雙擊 `Start-Demo.cmd`。首次執行會自動安裝、建置並開啟瀏覽器；之後可直接啟動。
 
@@ -36,7 +36,7 @@ npm start
 
 開啟 <http://127.0.0.1:3000>。完整準備、重設與展示案例請看 [Demo 操作指南](docs/demo-guide.md)。
 
-## 3 分鐘展示流程
+## 流程
 
 | 步驟 | 操作 | 重點 |
 | --- | --- | --- |
