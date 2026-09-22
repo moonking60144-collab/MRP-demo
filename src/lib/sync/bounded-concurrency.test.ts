@@ -5,7 +5,7 @@ import {
   mapWithBoundedConcurrency,
 } from './bounded-concurrency';
 
-test('movement snapshot 並行設定只接受正整數且不超過上限', () => {
+test('移動快照並行設定只接受正整數且不超過上限', () => {
   assert.equal(boundedConcurrency(undefined, 2, 2), 2);
   assert.equal(boundedConcurrency('bad', 2, 2), 2);
   assert.equal(boundedConcurrency('0', 2, 2), 2);

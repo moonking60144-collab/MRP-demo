@@ -90,9 +90,9 @@ const STEP_LABELS: Record<string, string> = {
 };
 
 const WORK_ORDER_BOM_DETAIL_TIMING_LABELS = [
-  ['work_order_bom_bom_snapshot_fetch', 'BOM snapshot API'],
-  ['work_order_bom_bom_snapshot_insert', 'BOM snapshot 寫入'],
-  ['work_order_bom_movement_snapshot_fetch', 'movement snapshot API'],
+  ['work_order_bom_snapshot_fetch', 'BOM 快照讀取'],
+  ['work_order_bom_snapshot_insert', 'BOM 快照寫入'],
+  ['work_order_movement_snapshot_fetch', '移動快照讀取'],
   ['work_order_bom_ledger_resolve', '領退料帳本'],
   ['work_order_bom_movement_insert', '領退料明細寫入'],
   ['work_order_bom_summary_update', 'BOM 摘要更新'],

@@ -3,14 +3,14 @@
   "version": "2.1.38",
   "private": true,
   "scripts": {
-    "prebuild": "npm run db:generate && npm run archive:generate",
+    "prebuild": "npm run db:generate",
     "dev": "node scripts/next-command.mjs dev",
     "build": "node scripts/next-command.mjs build",
     "start": "node scripts/start-demo.mjs",
     "start:postgres": "node scripts/start-postgres-demo.mjs",
     "start:postgres:local": "node scripts/start-postgres-demo.mjs --local",
     "lint": "eslint .",
-    "pretest": "npm run db:generate && npm run archive:generate",
+    "pretest": "npm run db:generate",
     "test": "node scripts/test-demo.mjs",
     "test:postgres": "npm run db:generate && node scripts/test-postgres.mjs",
     "test:postgres:local": "npm run db:generate && node scripts/test-postgres.mjs --local",
@@ -18,9 +18,7 @@
     "test:smoke": "node scripts/smoke-demo.mjs",
     "test:postgres:smoke": "node scripts/smoke-postgres-demo.mjs",
     "demo:reset": "node scripts/reset-demo.mjs",
-    "db:generate": "prisma generate",
-    "archive:generate": "prisma generate --schema prisma/archive.prisma",
-    "archive:validate": "prisma validate --schema prisma/archive.prisma"
+    "db:generate": "prisma generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -33,7 +31,6 @@
     "lucide-react": "^1.24.0",
     "next": "^15.0.0",
     "next-intl": "^3.0.0",
-    "nodemailer": "^6.9.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.12.0",
@@ -42,7 +39,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
     "@types/node": "^20.0.0",
-    "@types/nodemailer": "^6.4.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.0.0",

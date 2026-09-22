@@ -792,7 +792,7 @@ function PlanQtyDivergenceModal({
 
         <div className="flex-1 overflow-auto p-5 space-y-3 text-sm">
           <div className="text-slate-700">
-            Source 端「生產計畫」表有{' '}
+            合成來源的生產計畫有{' '}
             <b className="text-amber-700">{divs.length} 筆</b>
             紀錄的 plan_qty 與我們重新計算的不一致：
           </div>

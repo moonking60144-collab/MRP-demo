@@ -24,11 +24,11 @@ export async function preparePostgresWebDatabase(value: string | undefined) {
 SELECT pg_advisory_xact_lock(87263849);
 DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')) THEN RAISE EXCEPTION 'Database is no longer empty'; END IF; END $$;
 ${sql}
-INSERT INTO public.app_settings (key, value, updated_at) VALUES ('${PURPOSE_KEY}', '"${WEB_PURPOSE}"'::jsonb, CURRENT_TIMESTAMP);
+INSERT INTO demo."AppSetting" ("key", "value", "updatedAt") VALUES ('${PURPOSE_KEY}', '"${WEB_PURPOSE}"'::jsonb, CURRENT_TIMESTAMP);
 COMMIT;`);
         execFileSync(process.execPath, [cli, 'db', 'execute', '--url', url.toString(), '--file', file], { encoding: 'utf8', stdio: 'pipe' });
       } finally { rmSync(directory, { recursive: true, force: true }); }
-    } else assert.ok(tables.some(row => row.schemaname === 'public' && row.tablename === 'app_settings'), 'POSTGRES_WEB_PURPOSE_REQUIRED');
+    } else assert.ok(tables.some(row => row.schemaname === 'demo' && row.tablename === 'AppSetting'), 'POSTGRES_WEB_PURPOSE_REQUIRED');
     const verified = await assertPostgresWebIdentity(client);
     console.log(JSON.stringify({ storage: 'postgresql', database: verified.database, user: verified.user, postgres: verified.version }));
   } finally { await client.$disconnect(); }

@@ -13,17 +13,16 @@ import { dataset } from './data';
 import { prepareDemo } from './run-control';
 test.before(async () => prepareDemo());
 
-test('繼承正式 env 也無法建立真實 DB/Source/SMTP 連線', () => {
+test('繼承正式 env 也無法建立真實 DB/外部來源/郵件連線', () => {
   assert.equal(getDbUrl('local'), undefined);
   assert.equal(getDbUrl('docker'), undefined);
   assert.equal(getDbUrl('remote'), undefined);
   const client = createClient('postgresql://should-never-connect.invalid/company');
   assert.throws(() => client.$queryRaw, /Demo 禁止連接/);
-  assert.equal(config.databaseUrl, '');
-  assert.equal(config.sourceApiKey, '');
-  assert.equal(config.smtp.host, '');
-  assert.equal(config.smtp.pass, '');
-  assert.equal(config.sourceBaseUrl, 'https://demo.invalid');
+  assert.deepEqual(Object.keys(config), ['mrp']);
+  assert.equal('databaseUrl' in config, false);
+  assert.equal('sourceApiKey' in config, false);
+  assert.equal('smtp' in config, false);
 });
 
 test('原 API 路由永久改送 demo，不由 env 或請求參數解除', () => {
@@ -34,7 +33,7 @@ test('原 API 路由永久改送 demo，不由 env 或請求參數解除', () =>
   assert.doesNotMatch(readFileSync(join(process.cwd(), 'src/instrumentation.ts'), 'utf8'), /require\('\.\/instrumentation-node'\)/);
 });
 
-test('每個可執行 API 都是固定 demo 入口，原 handler 只保留在 reference', () => {
+test('每個可執行 API 都是固定 demo 入口，公開樹不保留原 handler', () => {
   let count = 0;
   function check(directory: string, relative = '') {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -45,15 +44,12 @@ test('每個可執行 API 都是固定 demo 入口，原 handler 只保留在 re
       const text = readFileSync(path, 'utf8');
       assert.match(text, /import \{ forwardDemo \} from '@\/lib\/demo\/forward'/);
       assert.doesNotMatch(text, /from ['"].*(?:db|source|orchestrator|reference)/);
-      assert.ok(existsSync(join(process.cwd(), 'reference/production-api', reference)));
-      const original = readFileSync(join(process.cwd(), 'reference/production-api', reference), 'utf8');
-      const methods = (source: string) => [...source.matchAll(/export (?:async )?function (GET|POST|PUT|PATCH|DELETE)\b/g)].map((match) => match[1]).sort();
-      assert.deepEqual(methods(text), methods(original), reference);
       count++;
     }
   }
   check(join(process.cwd(), 'src/app/api'));
   assert.equal(count, 56);
+  assert.equal(existsSync(join(process.cwd(), 'reference/production-api')), false);
 });
 
 test('編碼 API 前綴仍使用固定 handler，動態參數保留資料身份', async () => {

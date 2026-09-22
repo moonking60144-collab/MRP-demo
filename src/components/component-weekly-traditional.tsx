@@ -198,7 +198,7 @@ const ANALYTICS_COLS = [
   { key: 'purchaseLeadWeeks', label: '採購前置期', width: 92 },
 ];
 
-// Period column groups, ordered to match synthetic weekly view: 剩餘庫存 → 工令用料 → 預納.
+// Period column groups: 剩餘庫存 → 工令用料 → 預納.
 const PERIOD_GROUPS = [
   { key: 'remainingStock', label: '剩餘庫存', headerBg: 'bg-emerald-800 text-white', cellBg: 'bg-emerald-50', borderColor: 'border-emerald-300' },
   { key: 'usage', label: '工令用料', headerBg: 'bg-orange-500 text-white', cellBg: 'bg-orange-50', borderColor: 'border-orange-300' },

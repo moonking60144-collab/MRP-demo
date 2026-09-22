@@ -277,7 +277,7 @@ function FgMonthlySummarySourceValue({
 type ViewMode = 'detailed' | 'traditional';
 
 // ============================================================
-// Color scheme from Source monthly planning view:
+// Color scheme for the synthetic monthly planning view:
 //   黃(生產計畫) - Yellow for Production Plans
 //   紫(整合需求) - Purple for Integrated Demand
 //   深綠(剩餘庫存) - Dark Green for Remaining Stock
@@ -1855,7 +1855,7 @@ function AggregatedSourcesBanner({
 }
 
 // ============================================================
-// Detailed view: horizontal 12-month grid matching Source monthly planning view
+// Detailed view: horizontal 12-month synthetic planning grid.
 // ============================================================
 function PeriodDetailViewDetailed({
   periods,
@@ -2201,7 +2201,7 @@ function PeriodDetailViewDetailed({
     );
   };
 
-  // Plan editing state — each plan has editable fields matching Source monthly planning view
+  // Plan editing state for each synthetic production plan.
   // 'saved' means user pressed Save (read-only until transferred)
   // 'transferred' means Source 生產計畫已建立 (locked)
   const [planEdits, setPlanEdits] = useState<Record<number, {
@@ -2582,7 +2582,7 @@ function PeriodDetailViewDetailed({
 
   return (
     <div className="space-y-4">
-      {/* ===== Horizontal month grid matching Source monthly planning view ===== */}
+      {/* ===== Horizontal synthetic month grid ===== */}
       <div className="overflow-x-auto border border-slate-300 rounded-lg">
         <table className="text-xs border-collapse w-full" style={{ minWidth: `${140 + periods.length * 85}px` }}>
           <thead>
@@ -2765,7 +2765,7 @@ function PeriodDetailViewDetailed({
         </table>
       </div>
 
-      {/* ===== [生產計畫] 開單規劃 — matching Source monthly planning view exactly ===== */}
+      {/* ===== 生產計畫開單規劃 ===== */}
       <div className="border border-yellow-400 rounded-lg bg-yellow-50/50">
         <div className="px-4 py-2 bg-yellow-200 border-b border-yellow-400 font-bold text-sm text-yellow-900 rounded-t-lg flex items-center justify-between">
           <span>[生產計畫] 開單規劃</span>

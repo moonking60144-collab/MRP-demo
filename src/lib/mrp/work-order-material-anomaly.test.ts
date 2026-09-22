@@ -25,14 +25,14 @@ test('工令領退料 unknown 或 error 會列為阻擋異常', () => {
   });
 });
 
-test('已領料但缺少 movement snapshot 快照會列為來源追溯', () => {
+test('已領料但缺少耗退快照會列為來源追溯', () => {
   const anomaly = classifyWorkOrderMaterialAnomaly({
     ...normalRow,
     movementState: 'fallback',
     movementError: 'movement_source_unavailable',
   });
   assert.equal(anomaly.level, 'source');
-  assert.match(anomaly.reason, /沿用 BOM snapshot/);
+  assert.match(anomaly.reason, /沿用 BOM 領料結果/);
 });
 
 test('未領料列的 fallback 是正常狀態，不列為異常', () => {
@@ -67,7 +67,7 @@ test('主表與子表領料狀態不一致時列為待確認，但不阻擋已�
     issuedQtyError: 'issue_state_mismatch',
   }), {
     level: 'review',
-    reason: 'BOM 主表與領料子表狀態不一致',
+    reason: 'BOM 與領料明細狀態不一致',
   });
 });
 

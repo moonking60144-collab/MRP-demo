@@ -1,5 +1,5 @@
-export const BOOTSTRAP_RECOVERY_STORAGE_KEY = 'demo-mrp:bootstrap-reload-attempts';
-export const BOOTSTRAP_HYDRATED_EVENT = 'demo-mrp:hydrated';
+export const BOOTSTRAP_RECOVERY_STORAGE_KEY = 'mrp-demo:bootstrap-reload-attempts';
+export const BOOTSTRAP_HYDRATED_EVENT = 'mrp-demo:hydrated';
 export const BOOTSTRAP_RECOVERY_TIMEOUT_MS = 8_000;
 export const BOOTSTRAP_RECOVERY_MAX_RELOADS = 1;
 

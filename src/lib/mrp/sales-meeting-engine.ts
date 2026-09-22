@@ -4,9 +4,9 @@
  * Calculates 12 weekly forward periods (W01-W12) plus a 前期 bucket (W00) per customer part version.
  *
  * Data sources:
- *   Demand: demo.StagingOrder (unshipped qty by delivery week)
- *   Supply: demo.StagingProductionPlan (plan qty by completion date week)
- *   Inventory: demo.StagingInventory (matched by erpPartNo from part_versions)
+ *   Demand: synthetic order snapshot (unshipped qty by delivery week)
+ *   Supply: synthetic production plans (plan qty by completion date week)
+ *   Inventory: synthetic inventory snapshot (matched by ERP part number)
  *   Product list: staging.part_versions (customer part version → ERP part no)
  *
  * Optimized for remote DB: writes batched with createMany.
@@ -259,8 +259,8 @@ async function flushBatches(summaryBatch: any[], periodBatch: any[]) {
 async function updateProgress(runId: number, count: number, total: number) {
   await prisma.$executeRaw`
     UPDATE demo."MrpRun"
-    SET step_status = jsonb_set(
-      COALESCE(step_status, '{}'::jsonb),
+    SET "stepStatus" = jsonb_set(
+      COALESCE("stepStatus", '{}'::jsonb),
       '{_salesMeetingProgress}'::text[],
       ${JSON.stringify({ status: 'running', partsProcessed: count, totalParts: total })}::jsonb
     )

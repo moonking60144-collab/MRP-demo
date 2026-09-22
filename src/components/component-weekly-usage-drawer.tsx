@@ -756,7 +756,7 @@ export function ComponentWeeklyUsageDrawer({
                 <section className="flex items-center gap-1.5 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900 sm:px-5">
                   <AlertTriangle size={15} />
                   <span>
-                    此範圍包含 {data.unscheduledDemand.count} 筆未排程需求，共 {formatNumber(data.unscheduledDemand.qty)} {unit}；schedule snapshot 與 BOM snapshot 都沒有日期，因此保守列入前期。
+                    此範圍包含 {data.unscheduledDemand.count} 筆未排程需求，共 {formatNumber(data.unscheduledDemand.qty)} {unit}；排程與 BOM 都沒有日期，因此保守列入前期。
                   </span>
                 </section>
               )}
@@ -774,12 +774,12 @@ export function ComponentWeeklyUsageDrawer({
                   : <AlertTriangle size={15} />}
                 <span className="font-semibold">
                   {data.materialSummary.movementState === 'known'
-                    ? '領用、帳面出庫、正式退料與工令保留已依本 Run 的 movement snapshot 批號快照計算；歷史 Run 不會因工令後續結案而回寫，請以正式退料與最新 Run 判讀'
+                    ? '領用、帳面出庫、正式退料與工令保留已依本 Run 的移動快照計算；歷史 Run 不會因工令後續結案而回寫，請以正式退料與最新 Run 判讀'
                     : data.materialSummary.movementState === 'unknown'
                       ? '部分耗用／退料無法唯一歸屬，該工令不納入需求'
                       : data.materialSummary.movementState === 'mixed'
-                        ? '部分工令依 movement snapshot 計算，其餘沿用 BOM snapshot 領料結果'
-                      : '此 Run 尚無 movement snapshot 快照，沿用 BOM snapshot 領料結果'}
+                        ? '部分工令依移動快照計算，其餘沿用 BOM 領料結果'
+                      : '此 Run 尚無移動快照，沿用 BOM 領料結果'}
                 </span>
               </div>
               <div className="flex items-center gap-3 text-slate-600">
@@ -1188,7 +1188,7 @@ export function ComponentWeeklyUsageDrawer({
                             <td className="border-b border-slate-100 px-3 py-2 font-mono">{row.finishedErpPartNo || '—'}</td>
                             <td className="border-b border-slate-100 px-3 py-2">
                               <div className="flex flex-wrap items-center gap-1.5" title={row.dateMismatch
-                                ? `schedule snapshot：${row.scheduleStartDate || '—'}；BOM snapshot：${row.bomStartDate || '—'}`
+                                ? `排程：${row.scheduleStartDate || '—'}；BOM：${row.bomStartDate || '—'}`
                                 : undefined}
                               >
                                 <span>{row.startDate || '未排程'}</span>
@@ -1378,7 +1378,7 @@ export function ComponentWeeklyUsageDrawer({
               {tab === 'movements' && (
                 data.movements.length === 0 ? (
                   <div className="flex h-48 items-center justify-center px-6 text-center text-sm text-slate-400">
-                    此範圍沒有 movement snapshot 耗用／退料快照；若上方顯示 fallback，代表此 Run 沿用 BOM snapshot 領料資料
+                    此範圍沒有耗用／退料快照；若上方顯示 fallback，代表此 Run 沿用 BOM 領料資料
                   </div>
                 ) : (
                   <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-xs">

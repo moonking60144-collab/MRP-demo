@@ -30,7 +30,7 @@ test('Demo 維運與合成容量不是取得失敗，也不宣告真實維運成
   assert.ok(storage.volumes.every((row: { label: string }) => row.label.startsWith('模擬')));
 });
 
-test('元件批號可用量守恆，movement snapshot 原始交易可獨立對回 BOM、週推與來源身分', async () => {
+test('元件批號可用量守恆，移動快照可獨立對回 BOM、週推與來源身分', async () => {
   const runId = latestRun().id, data = dataset(runId);
   for (const component of data.cw) {
     const unit = component.unit === 'kg' ? 'Kg' : 'Pc';

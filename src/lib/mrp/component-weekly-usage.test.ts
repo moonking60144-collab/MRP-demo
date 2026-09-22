@@ -59,7 +59,7 @@ test('工令用料明細 API 只接受 all 或非負整數週別', () => {
   assert.equal(parseComponentWeeklyUsageWeekIndex('W01'), undefined);
 });
 
-test('明細 movement 狀態能區分 movement snapshot、BOM snapshot 混合來源', () => {
+test('明細 movement 狀態能區分移動快照與 BOM 領料混合來源', () => {
   assert.equal(resolveComponentWeeklyMovementSummaryState([]), 'fallback');
   assert.equal(resolveComponentWeeklyMovementSummaryState(['fallback']), 'fallback');
   assert.equal(resolveComponentWeeklyMovementSummaryState(['known']), 'known');
@@ -67,7 +67,7 @@ test('明細 movement 狀態能區分 movement snapshot、BOM snapshot 混合來
   assert.equal(resolveComponentWeeklyMovementSummaryState(['known', 'unknown']), 'unknown');
 });
 
-test('未結案工令的 movement snapshot OUT 保持帳面出庫待結算，不宣稱為已確認實耗', () => {
+test('未結案工令的 OUT 保持帳面出庫待結算，不宣稱為已確認實耗', () => {
   assert.equal(resolveComponentWeeklySettlementState({
     status: 'over_issued',
     movementState: 'known',
@@ -115,7 +115,7 @@ test('未結案工令的 movement snapshot OUT 保持帳面出庫待結算，不
   }), 'pending');
 });
 
-test('相同 movement snapshot OUT 依工令狀態區分未結案待結算與已結案已結算', () => {
+test('相同 OUT 依工令狀態區分未結案待結算與已結案已結算', () => {
   const quantities = {
     status: 'over_issued' as const,
     movementState: 'known',
@@ -180,7 +180,7 @@ test('工令用料明細只加總同料號同週且剩餘量大於零的工令',
   assert.equal(result.excluded.find((row) => row.woNumber === 'WO-004')?.reason, 'missing_issue_details');
 });
 
-test('工令用料明細與週推移共用 schedule snapshot 指定開始日，並揭露 BOM snapshot 日期差異', () => {
+test('工令用料明細與週推移共用排程開始日，並揭露 BOM 日期差異', () => {
   const result = summarizeComponentWeeklyUsage({
     materialPartNo: 'WIRE-01',
     weekIndex: 2,
@@ -318,7 +318,7 @@ test('全部週期明細保留已領足與超領工令，但不納入週需求�
   assert.equal(result.excluded.some((row) => row.woNumber === 'WO-FUTURE'), false);
 });
 
-test('重複使用批號的 movement snapshot 快照不虛構退料，未結案 OUT 標示為待結算帳面出庫', () => {
+test('重複使用批號的移動快照不虛構退料，未結案 OUT 標示為待結算帳面出庫', () => {
   const result = summarizeComponentWeeklyUsage({
     materialPartNo: 'WIRE-01',
     weekIndex: 1,
@@ -425,7 +425,7 @@ test('耗用與退料無法唯一歸屬時保留工令但排除需求', () => {
   assert.equal(result.reconciled, true);
 });
 
-test('movement snapshot 未確認時不以 BOM snapshot 舊領用量偽造淨領用與正式退料', () => {
+test('移動快照未確認時不以 BOM 舊領用量偽造淨領用與正式退料', () => {
   const result = summarizeComponentWeeklyUsage({
     materialPartNo: 'WIRE-01',
     weekIndex: 1,

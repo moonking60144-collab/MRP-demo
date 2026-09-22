@@ -490,7 +490,7 @@ function GenericTable({
                         : row.anomalyLevel === 'review'
                           ? <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800">待確認</span>
                           : row.anomalyLevel === 'source'
-                            ? <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700">BOM snapshot</span>
+                            ? <span className="rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700">BOM</span>
                             : <span className="text-slate-400">正常</span>
                     ) : formatCellValue(row, col)}
                   </td>

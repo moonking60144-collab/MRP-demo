@@ -127,7 +127,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 // ============================================================
-// Column definitions — matching Source sales planning view layout
+// Column definitions for the synthetic sales layout.
 // ============================================================
 const FROZEN_COLS = [
   { key: 'customerCode', label: '客戶代碼', width: 70 },

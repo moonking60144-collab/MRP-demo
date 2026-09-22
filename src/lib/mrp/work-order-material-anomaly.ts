@@ -99,8 +99,8 @@ export function classifyWorkOrderMaterialAnomaly(
     return {
       level: 'source',
       reason: movementError
-        ? `${movementError}；此 Run 沿用 BOM snapshot 領料結果`
-        : '此 Run 沿用 BOM snapshot 領料結果，沒有 movement snapshot 耗退帳本',
+        ? `${movementError}；此 Run 沿用 BOM 領料結果`
+        : '此 Run 沿用 BOM 領料結果，沒有耗退帳本',
     };
   }
 

@@ -549,8 +549,8 @@ async function flushBatches(summaryBatch: any[], periodBatch: any[]) {
 async function updateProgress(runId: number, mrpType: string, count: number, total: number) {
   await prisma.$executeRaw`
     UPDATE demo."MrpRun"
-    SET step_status = jsonb_set(
-      COALESCE(step_status, '{}'::jsonb),
+    SET "stepStatus" = jsonb_set(
+      COALESCE("stepStatus", '{}'::jsonb),
       ${`{_componentProgress_${mrpType}}`}::text[],
       ${JSON.stringify({ status: 'running', materialsProcessed: count, totalMaterials: total })}::jsonb
     )

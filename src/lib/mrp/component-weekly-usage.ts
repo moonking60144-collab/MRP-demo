@@ -84,7 +84,7 @@ export function resolveComponentWeeklyDemandDate(
 } {
   const bomDate = bomStartDate ?? null;
   const scheduleDate = workOrderStartDate ?? null;
-  // schedule snapshot 是使用者排定的需求日期；BOM snapshot 日期保留供差異追溯。
+  // 排程日期是使用者指定的需求日期；BOM 日期只保留供差異追溯。
   if (scheduleDate) {
     return {
       date: scheduleDate,

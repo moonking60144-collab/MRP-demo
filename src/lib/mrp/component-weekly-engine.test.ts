@@ -57,7 +57,7 @@ test('有剩餘需求的 BOM 才寫入對應週別用量', () => {
   assert.equal(usageMap.get('SCM435-I3-04.80-V01')?.get(weeks[0]!.label), 500);
 });
 
-test('元件需求優先依 schedule snapshot 指定開始日分週，不使用過期的 BOM snapshot 日期', () => {
+test('元件需求優先依排程開始日分週，不使用過期的 BOM 日期', () => {
   const { usageMap } = aggregateComponentWeeklyUsageRows([
     bomRow({
       woNumber: 'DEMO-WO-002',

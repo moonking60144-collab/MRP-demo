@@ -16,7 +16,7 @@ export function archiveDataset(id: string): DemoDataset {
 }
 export function archiveScalars(modelName: string, rows: DemoRow[], missing: string[] = []): Array<Record<string, string | null>> {
   const model = Prisma.dmmf.datamodel.models.find((entry) => entry.name === modelName)!;
-  return rows.map((row) => Object.fromEntries(model.fields.filter((field) => field.kind !== 'object' && !field.isList).map((field) => [field.dbName ?? field.name, missing.includes(field.name) || row[field.name] == null ? null : typeof row[field.name] === 'object' ? JSON.stringify(row[field.name]) : String(row[field.name])])));
+  return rows.map((row) => Object.fromEntries(model.fields.filter((field) => field.kind !== 'object' && !field.isList).map((field) => [field.name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`), missing.includes(field.name) || row[field.name] == null ? null : typeof row[field.name] === 'object' ? JSON.stringify(row[field.name]) : String(row[field.name])])));
 }
 function query(params: URLSearchParams) {
   const page = params.get('page') ?? '1', q = (params.get('q') ?? '').trim();

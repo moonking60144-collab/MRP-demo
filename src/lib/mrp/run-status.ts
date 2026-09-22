@@ -10,8 +10,6 @@ export const MRP_RUN_STATUS = {
 
 export type MrpRunStatus = typeof MRP_RUN_STATUS[keyof typeof MRP_RUN_STATUS];
 
-export const MRP_RUN_START_LOCK_KEY = 314159;
-
 export const ACTIVE_STATUSES: MrpRunStatus[] = [
   MRP_RUN_STATUS.PENDING,
   MRP_RUN_STATUS.SYNCING,
@@ -35,8 +33,4 @@ export const STOP_REASON = {
     'The Node process was killed before the sync could complete — see Detail Logs for last activity.',
   SHUTDOWN_SIGNAL: (signal: string) =>
     `Server received ${signal} during run (likely PM2 reload). The sync was killed mid-call.`,
-  PLAN_QTY_DRIFT: (divergedCount: number, sample: string) =>
-    `Source plan_qty (demo-plan-field) diverged from our self-computed value on ${divergedCount} records. ` +
-    `The Source formula has likely drifted (e.g. AC11 → AD11 column shift). ` +
-    `Sample: ${sample}. Fix the Source formula on 生產計畫 G5 and re-run.`,
 } as const;

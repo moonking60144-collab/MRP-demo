@@ -3,13 +3,11 @@
  *
  * Wraps each MRP run in an AsyncLocalStorage context that owns an in-memory
  * ring buffer of {ts, level, msg} entries. `runLog.{info,warn,error}` writes
- * to both the console (so docker/pm2 logs still show everything) AND the
- * buffer; a background flusher persists the buffer to mrp_run.logs every 2s
- * so the UI can render it live via the existing /api/runs/:id polling.
+ * to both the console and the buffer; a background flusher persists the
+ * buffer to the synthetic run record every 2s so the UI can render it live.
  *
- * Why: production deployments don't always have terminal access, and a hung
- * Source API call needs to surface its diagnostic trail to the operator
- * looking at the 執行紀錄 panel — not to the docker stdout that nobody reads.
+ * Why: a long-running calculation should surface its diagnostic trail in the
+ * 執行紀錄 panel even when the terminal is not visible.
  */
 import { AsyncLocalStorage } from 'async_hooks';
 import prisma from './db';
@@ -50,7 +48,7 @@ function format(args: unknown[]): string {
 }
 
 function append(level: RunLogEntry['level'], args: unknown[]): void {
-  // Always pass through to console so terminal/docker logs are unaffected
+  // Always pass through to console so terminal logs are unaffected.
   if (level === 'error') console.error(...args);
   else if (level === 'warn') console.warn(...args);
   else console.log(...args);
@@ -74,7 +72,7 @@ export const runLog = {
 
 /**
  * Run `fn` inside a context that captures all `runLog.*` calls and flushes
- * them to mrp_run.logs every 2s plus once at the end. Safe to nest — inner
+ * them to the synthetic run record every 2s plus once at the end. Safe to nest — inner
  * calls join the outer context (same runId) implicitly via AsyncLocalStorage.
  */
 export async function withRunLogging<T>(runId: number, fn: () => Promise<T>): Promise<T> {
@@ -82,7 +80,7 @@ export async function withRunLogging<T>(runId: number, fn: () => Promise<T>): Pr
   // wrapper (sync phase wraps once, calc phases wrap again) accumulates
   // instead of replacing each previous phase's logs. Without this, the
   // calc-phase wrapper would start with an empty buffer and the first
-  // flush would overwrite the entire sync log section in mrp_run.logs.
+  // flush would overwrite the entire earlier log section in the run record.
   let seedBuffer: RunLogEntry[] = [];
   try {
     const existing = await prisma.mrpRun.findUnique({

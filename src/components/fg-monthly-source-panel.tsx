@@ -61,11 +61,7 @@ const TABS: { key: SourceKey; label: string }[] = [
   { key: 'productionPlans', label: '生產計畫' },
 ];
 
-// 「在 Source 開啟」直接跳【業務主表】(ERP 持久資料) 的單筆 detail：
-// {base}/demo/{path}/{sourceRecordId}。實測 7 個 source 的 staging
-// sourceRecordId 都 = 對應業務主表的 record id（通用且穩定，業務主表是 ERP
-// 持久資料），點哪筆開哪筆、最直覺。不跳 MRP-[來源]/[MRP專用] 中介表
-// （那些是 Source MRP 按鈕產生的快照、我們 App 不維護）。
+// Demo 來源連結只開啟本機合成紀錄，不連到外部表單。
 const SOURCE_LINK: Record<SourceKey, { type: SourceRecordType; label: string }> = {
   partVersions:    { type: 'part-version', label: '客戶料號版本' },
   inventory:       { type: 'inventory', label: 'ERP 料品資料' },

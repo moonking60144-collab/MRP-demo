@@ -34,7 +34,7 @@ async function initialize(client: PrismaClient, url: URL) {
   assert.equal(identity.database, TEST_DATABASE); assert.equal(identity.user, TEST_USER); assert.equal(identity.owner, TEST_USER);
   const tables = await client.$queryRaw<{ schemaname: string; tablename: string }[]>`SELECT schemaname, tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')`;
   if (tables.length) {
-    assert.ok(tables.some(row => row.schemaname === 'public' && row.tablename === 'app_settings'), '拒絕未標記的既有資料庫。');
+    assert.ok(tables.some(row => row.schemaname === 'demo' && row.tablename === 'AppSetting'), '拒絕未標記的既有資料庫。');
     await assertPurpose(client);
     return identity;
   }
@@ -47,7 +47,7 @@ async function initialize(client: PrismaClient, url: URL) {
 SELECT pg_advisory_xact_lock(87263849);
 DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')) THEN RAISE EXCEPTION 'Database is no longer empty'; END IF; END $$;
 ${sql}
-INSERT INTO public.app_settings (key, value, updated_at) VALUES ('${PURPOSE_KEY}', '"${PURPOSE}"'::jsonb, CURRENT_TIMESTAMP);
+INSERT INTO demo."AppSetting" ("key", "value", "updatedAt") VALUES ('${PURPOSE_KEY}', '"${PURPOSE}"'::jsonb, CURRENT_TIMESTAMP);
 COMMIT;`);
     execFileSync(process.execPath, [cli, 'db', 'execute', '--url', url.toString(), '--file', file], { encoding: 'utf8', stdio: 'pipe' });
   } finally { rmSync(directory, { recursive: true, force: true }); }
@@ -129,8 +129,8 @@ async function verify(client: PrismaClient, identity: Awaited<ReturnType<typeof 
   }), error => error === rollbackPurpose);
   await assertPurpose(client);
   checks.push('existing-database-purpose-fail-closed-and-marker-preserved');
-  const dateColumns = await client.$queryRaw<{ table_name: string; column_name: string }[]>`SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'mrp_out' AND data_type = 'date'`;
-  const dateFields = new Set(Prisma.dmmf.datamodel.models.filter(model => Object.values(outputModels).includes(model.name)).flatMap(model => model.fields.filter(field => dateColumns.some(column => column.table_name === model.dbName && column.column_name === (field.dbName ?? field.name))).map(field => `${model.name}.${field.name}`)));
+  const dateColumns = await client.$queryRaw<{ table_name: string; column_name: string }[]>`SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'demo' AND data_type = 'date'`;
+  const dateFields = new Set(Prisma.dmmf.datamodel.models.filter(model => Object.values(outputModels).includes(model.name)).flatMap(model => model.fields.filter(field => dateColumns.some(column => column.table_name === (model.dbName ?? model.name) && column.column_name === (field.dbName ?? field.name))).map(field => `${model.name}.${field.name}`)));
   const runs: DemoRun[] = [];
   for (let index = 0; index < 2; index++) {
     const row = await client.mrpRun.create({ data: { versionCode: `DEMO-PG-${randomUUID()}`, runDate: new Date('2026-09-03T00:00:00.000Z'), status: 'completed', createdBy: 'Demo', orderDemandContractVersion: ORDER_DEMAND_CONTRACT_V2 } });

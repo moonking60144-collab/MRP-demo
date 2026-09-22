@@ -952,7 +952,7 @@ function UsageWarningBanner({ warnings }: { warnings: UsageWarnings }) {
                     <td className="px-3 py-1.5 border-b border-amber-100 font-mono whitespace-nowrap">
                       {href ? (
                         <a href={href} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
-                          {item.woNumber || '開啟 BOM snapshot'}
+                          {item.woNumber || '開啟 BOM 紀錄'}
                         </a>
                       ) : item.woNumber || '—'}
                     </td>
@@ -1029,7 +1029,7 @@ function WeeklyPeriodTable({
           </tr>
         </thead>
         <tbody>
-          {/* Remaining Stock row — first to match synthetic weekly view */}
+          {/* Remaining Stock row stays first in the synthetic weekly layout. */}
           <tr>
             <td className={`px-2 py-1 font-medium ${ROW_COLORS.remainingStock.bg} ${ROW_COLORS.remainingStock.text} sticky left-0 z-10 border border-slate-200`}>
               {ROW_COLORS.remainingStock.label}
