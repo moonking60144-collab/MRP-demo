@@ -2,8 +2,6 @@
 
 將訂單、預示量、庫存、工令、BOM 與採購資料，整合成可追溯、可版本化的生產與物料需求規劃系統。
 
-這個 Demo 保留原有 MRP 計算引擎、報表與主要操作流程，所有資料均為合成資料。
-
 ![MRP Demo 儀表板與版本化執行紀錄](docs/images/demo-overview.jpg)
 
 ## MRP？
@@ -69,4 +67,4 @@ npm start
 - 所有寫入只改變本機合成狀態；歷史版本維持唯讀。
 - 這是本機面試 Demo，不應直接當成公開 production 服務。
 
-深入資料流、隔離方式與可驗證範圍請看 [技術展示與驗證](docs/technology-evidence.md)；CI 狀態請核對對應 commit 的 [GitHub Actions](https://github.com/moonking60144-collab/MRP-demo/actions)。
+CI 狀態請核對對應 commit 的 [GitHub Actions](https://github.com/moonking60144-collab/MRP-demo/actions)。
