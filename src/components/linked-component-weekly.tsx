@@ -44,7 +44,7 @@ export function LinkedComponentWeekly({ query }: { query: string }) {
   const body = resource.data;
   return <section className="flex h-full min-h-0 flex-col gap-3 p-4">
     <div className="flex flex-wrap items-center gap-3"><h2 className="text-xl font-bold">元件週推・關聯材料</h2><Link href="/fg-monthly" className="ml-auto text-sm text-blue-700 underline">返回成品月推</Link></div>
-    <div className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-700"><b>{params.get('material')}</b> · {params.get('mrpType')}<p className="mt-1 text-xs">固定查看{params.get('archiveId') ? '封存' : '正式資料'} Run {params.get('runId')} · {body?.archive?.run.versionCode ?? body?.versionCode ?? '確認版本中'}{params.get('dbSource') ? ` · ${params.get('dbSource')}` : ''}。本頁不隨側欄版本變更，僅顯示此完整料號；未進行逐單配料。</p></div>
+    <div className="rounded border border-slate-200 bg-white p-3 text-sm text-slate-700"><b>{params.get('material')}</b> · {params.get('mrpType')}<p className="mt-1 text-xs">固定查看{params.get('archiveId') ? '封存' : 'Demo 合成資料'} Run {params.get('runId')} · {body?.archive?.run.versionCode ?? body?.versionCode ?? '確認版本中'}{params.get('dbSource') ? ` · ${params.get('dbSource')}` : ''}。本頁不隨側欄版本變更，僅顯示此完整料號；未進行逐單配料。</p></div>
     {resource.loading ? <Loader label="讀取指定版本元件週推" /> : resource.error || adapted.error ? <Failure message={resource.error ?? adapted.error!} retry={resource.retry} />
       : adapted.items?.length ? <ComponentWeeklyTraditionalView items={adapted.items} mrpType={params.get('mrpType')!} snapshot={adapted.snapshot} preloadedPeriods={adapted.preloadedPeriods} columnHeaderColumns={columns} columnHeaderController={header.menuController} onInspect={setInspect} />
         : <p>此版本沒有對應材料的元件週推資料，未切換至其他版本。</p>}
