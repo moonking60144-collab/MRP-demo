@@ -914,13 +914,10 @@ export function TraditionalView({
     if (highlightedRowIds.size === 0) return '';
     const ids = [...highlightedRowIds];
     // 整列靛藍底（仿 Source 勾選列）：靛藍蓋過橘黃/粉紅 row 染色、跟框選的
-    // blue-200 略區隔。!important 蓋過 cell 自己的斑馬/分級底色。左側 detail td
-    // (sticky) 額外加粗邊條，橫向捲動固定在左緣、列首一眼可辨。
+    // blue-200 略區隔。!important 蓋過 cell 自己的斑馬/分級底色。
     const rowSel = ids.map((id) => `.mrp-trad-table tr[data-row-id="${id}"] > td`).join(',');
-    const barSel = ids.map((id) => `.mrp-trad-table tr[data-row-id="${id}"] > td:first-child::before`).join(',');
     const tglSel = ids.map((id) => `.mrp-trad-table tr[data-row-id="${id}"] .hl-toggle`).join(',');
     return `${rowSel}{background-color:#c7d2fe !important}` +
-           `${barSel}{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:#4f46e5;z-index:20}` +
            `${tglSel}{background-color:#4f46e5 !important;border-color:#4338ca !important}`;
   }, [highlightedRowIds]);
 
